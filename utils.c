@@ -5,6 +5,13 @@
 #include <ctype.h>
 extern char *strdup(const char *);
 
+typedef union { 
+  int   int_value;
+  float float_value;
+  char *string_value;
+  char symbol;
+} answer_t;
+
 void clear_input_buffer(void){
     int c;
     do
@@ -36,7 +43,7 @@ int read_string(char *buf, int buf_size){
 
   while(counter < buf_size - 1){
     c = getchar();
-    if(c != '\n' && counter < buf_size - 1){
+    if(c != '\n' ){
       buf[counter] = c;
       counter += 1;
     }
@@ -62,13 +69,6 @@ int read_string(char *buf, int buf_size){
   while(result == 0);
   return buf;
 }*/
-
-typedef union { 
-  int   int_value;
-  float float_value;
-  char *string_value;
-  char symbol;
-} answer_t;
 
 typedef bool check_func(char*);
 typedef answer_t convert_func(char*);
@@ -96,8 +96,8 @@ bool not_empty(char *str) {
 
 bool correct_shelf(char *shelf){
   int length = strlen(shelf);
-  if(length >= 2){
-    if(isdigit(shelf[0])){
+  if(length == 3){
+    if(!isupper(shelf[0])){
       return false;
     }
     for(int i = 1; i < length; i++){
@@ -111,12 +111,9 @@ bool correct_shelf(char *shelf){
 }
 
 bool accepted_menu(char *choice){
-  int length = strlen(choice);
-  char *accepted = "LlTtRrGgHhAa";
-  if(length != 1){
-    return false;
-  }
-  for(int i = 0; i < strlen(accepted); i ++){
+  size_t length = strlen(choice);
+  char *accepted = "AaLlDdEeSsPpCcRr+-=OoQq";
+  for(size_t i = 0; i < strlen(accepted); i ++){
     if(choice[0] == accepted[i]){
       return true;
     }
@@ -149,13 +146,21 @@ char *ask_question_shelf(char *question){
 }
 
 void print_menu(){
-  char *s1 = "[L]ägga till en vara";
-  char *s2 = "[T]a bort en vara";
-  char *s3 = "[R]edigera en vara";
-  char *s4 = "Ån[g]ra senaste ändringen";
-  char *s5 = "Lista [h]ela varukatalogen";
-  char *s6 = "[A]vsluta";
-  fprintf(stdout,"%s\n%s\n%s\n%s\n%s\n%s\n",s1,s2,s3,s4,s5,s6);
+  char *add = "[A]dd merchandise";
+  char *list = "[L]ist merchandise";
+  char *remove = "Remove merchandise with [D]";
+  char *edit = "[E]dit merchandise";
+  char *show = "[S]how stock";
+  char *replenish = "Re[P]lenish stock";
+  char *create_cart = "[C]reate cart";
+  char *rm_cart = "[R]emove cart";
+  char *add_to_cart = "Add a new cart with [+]";
+  char *rm_from_cart = "Remove from cart with [-]";
+  char *calc_cost = "Calculate the cost with [=]";
+  char *checkout = "Check[O]ut";
+  char *quit = "[Q]uit";
+
+  fprintf(stdout,"%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",add, list, remove, edit, show, replenish, create_cart, rm_cart, add_to_cart, rm_from_cart, calc_cost, checkout, quit);
 }
 
 char ask_question_menu(){
@@ -168,3 +173,4 @@ char ask_question_menu(){
   }while(!accepted_menu(buf));
   return toupper(buf[0]);
 }
+

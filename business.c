@@ -55,6 +55,13 @@ static size_t hash_function(elem_t key)
   return result;
 }
 
+static shelf_t *create_shelf(char *storage, int stock){
+    shelf_t *new_shelf = calloc(sizeof(shelf_t), 1);
+    new_shelf->place = storage;
+    new_shelf->stock = stock;
+    return new_shelf;
+}
+
 
 
 static void free_merch(merch_t *merch){
@@ -67,10 +74,13 @@ static void free_merch(merch_t *merch){
 
 static merch_t *make_item(char *name, char *desc, int price){
     merch_t *new_merch = calloc(1, sizeof(merch_t));
-    new_merch->name = name;
-    new_merch->desc = desc;
+    new_merch->name = strdup(name);
+    new_merch->desc = strdup(desc);
     new_merch->price = price;
     new_merch->locations = ioopm_list_create();
+
+    free(name);
+    free(desc);
     return new_merch;
 }
 
@@ -261,7 +271,50 @@ void show_stock(warehouse_t *wt, char* merch_name) {
     }
 }
 
+bool replenish_stock(warehouse_t *wh, char *merch_name, char* storage_id, int stock_increase){
 
+    
+    //Huvud if satsen är om produkten ens finns, isåfall är det över
+    //Sedan kollar jag om platsen finns i location_ht, isåfall kan jag använda infon om vad den ska stora
+    //där och sedan kolla i linkade lista för att se så dem stämmer. Isåfall bara att öka belopp
+    //
+    //nästa fall är om det som den sparar i ht_locations inte stämmer med ht_merch
+    //Sista fall är om varan finns men varuplatsen finns inte, då måste en ny skapas och den platsen samt
+    //stocken appendas i listan
+    elem_t found_merch_elem;
+    if(!ioopm_hash_table_lookup(wh->ht_merch, string_elem(merch_name), &found_merch_elem)) return false; //finns ens vara
+    else if(ioopm_hash_table_lookup(wh->ht_identifier, string_elem(storage_id), &found_merch_elem)) { // Vara finns men finns platsen
+        elem_t locations_elem;
+        merch_t *found_merch = found_merch_elem.p;
+
+        if(ioopm_hash_table_lookup(wh->ht_merch, string_elem(found_merch->name), &locations_elem)){//Den sagda varan som ska sparas på plats, spara dens lista.
+            merch_t *locations_merch = locations_elem.p;
+            ioopm_list_t *locations_list = locations_merch->locations;
+
+            ioopm_list_iterator_t *list_iter = ioopm_list_iterator_create(locations_list);
+            while(!ioopm_list_iterator_at_end(list_iter)){
+                elem_t current_iter = ioopm_list_iterator_current(list_iter);
+                shelf_t *current_shelf = current_iter.p;
+                if(strcmp(current_shelf->place, storage_id) == 0){
+                    current_shelf->stock += stock_increase;
+                    return true;
+                }
+            ioopm_list_iterator_advance(list_iter);
+        }
+        return false;
+    }
+    return false;
+
+    }
+    //I detta fall finns inte platsen med i lista, varan finns dock, därför måste en ny plats skapas och den sedan appendas i rätt lista
+    merch_t *found_merch = found_merch_elem.p;
+    ioopm_list_t *locations = found_merch->locations;
+    shelf_t *new_shelf = create_shelf(storage_id, stock_increase);
+    ioopm_list_append(locations, ptr_elem(new_shelf));
+    ioopm_hash_table_insert(wh->ht_identifier, string_elem(storage_id), string_elem(found_merch->name));
+    return true;
+    
+}
 
 
 

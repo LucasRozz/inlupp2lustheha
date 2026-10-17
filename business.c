@@ -31,11 +31,18 @@ struct merch {
     int price;
     ioopm_list_t *locations;
 };
+struct cart {
+    int id;
+    ioopm_hash_table_t *items;
+};
+//A cart is a merch-> quantity hash table. In the linked list, each element is a cart which has its id and then the cart.
 
 struct warehouse {
     ioopm_hash_table_t *ht_merch;
     ioopm_hash_table_t *ht_identifier;
-    ioopm_list_t *cart;
+    ioopm_hash_table_t *ht_cart;
+    ioopm_list_t *carts;
+    int carts_amount;
 };
 
 static bool eq_function(elem_t a, elem_t b)
@@ -57,7 +64,7 @@ static size_t hash_function(elem_t key)
 
 static shelf_t *create_shelf(char *storage, int stock){
     shelf_t *new_shelf = calloc(sizeof(shelf_t), 1);
-    new_shelf->place = storage;
+    new_shelf->place = strdup(storage);
     new_shelf->stock = stock;
     return new_shelf;
 }
@@ -95,30 +102,31 @@ warehouse_t *create_warehouse(){
 void destroy_warehouse(warehouse_t *wh){
     ioopm_hash_table_destroy(wh->ht_identifier);
     ioopm_hash_table_destroy(wh->ht_merch);
-
+    
     //Förstöra carts här
 
     free(wh);
 }
 
-bool add_item(ioopm_hash_table_t *ht, char *name, char *desc, int price) {;
+bool add_item(warehouse_t *wh, char *name, char *desc, int price) {;
     elem_t result;
-    if (ioopm_hash_table_lookup(ht, string_elem(name), &result)) {
+    
+    if (ioopm_hash_table_lookup(wh->ht_merch, string_elem(name), &result)) {
         return false;
     }
     else {
         merch_t *new_merch = make_item(name, desc, price);
-        ioopm_hash_table_insert(ht, string_elem(new_merch->name), ptr_elem(new_merch));
+        ioopm_hash_table_insert(wh->ht_merch, string_elem(new_merch->name), ptr_elem(new_merch));
         return true;
     }
 }
 
-void input_item(warehouse_t *wt){
+void input_item(warehouse_t *wh){
     char *name = ask_question_string("Varans namn:");
     char *desc = ask_question_string("Varubeskrivning:");
     int price = ask_question_int("Varans kostnad (uttryckt i ören):");
 
-    if(!add_item(wt->ht_merch, name, desc, price)){ // Giive the data to add_item if successfull otherwise free
+    if(!add_item(wh, name, desc, price)){ // Giive the data to add_item if successfull otherwise free
         printf("Varan finns redan\n");
         free(name);
         free(desc);
@@ -128,8 +136,9 @@ void input_item(warehouse_t *wt){
 
 
 
-void list_items(warehouse_t *wt) {
-    ioopm_hash_table_iterator_t *iter = ioopm_list_iterator_create(wt->ht_merch); 
+void list_items(warehouse_t *wh) {
+
+    ioopm_hash_table_iterator_t *iter = ioopm_hash_table_iterator_create(wh->ht_merch);
     bool stop = false;
     
     do
@@ -153,22 +162,22 @@ void list_items(warehouse_t *wt) {
     return;
 }
 
-bool remove_item(warehouse_t *wt, char *remove) {
+bool remove_item(warehouse_t *wh, char *remove) {
     elem_t result;
-    if (ioopm_hash_table_lookup(wt->ht_merch, string_elem(remove), &result)) {
+    if (ioopm_hash_table_lookup(wh->ht_merch, string_elem(remove), &result)) {
         merch_t *merch = result.p; 
         ioopm_list_iterator_t *list_iter = ioopm_list_iterator_create(merch->locations);
 
         while(!ioopm_list_iterator_at_end(list_iter)){
             shelf_t *current = ioopm_list_iterator_current(list_iter).p;
             elem_t ignore;
-            ioopm_hash_table_remove(wt->ht_identifier, string_elem(current->place), &ignore);
+            ioopm_hash_table_remove(wh->ht_identifier, string_elem(current->place), &ignore);
             free(current->place);
             free(current);
             ioopm_list_iterator_advance(list_iter);
         }
         ioopm_list_iterator_destroy(list_iter);
-        ioopm_hash_table_remove(wt->ht_merch, string_elem(remove), &result);
+        ioopm_hash_table_remove(wh->ht_merch, string_elem(remove), &result);
         free_merch(merch);
         return true;
     }
@@ -177,33 +186,33 @@ bool remove_item(warehouse_t *wt, char *remove) {
     }
 }
 
-static void change_location_name(warehouse_t *wt, merch_t *merch) {
+static void change_location_name(warehouse_t *wh, merch_t *merch) {
     ioopm_list_iterator_t *list_iter = ioopm_list_iterator_create(merch->locations);
     while(!ioopm_list_iterator_at_end(list_iter)){
         shelf_t *current = ioopm_list_iterator_current(list_iter).p;
-        ioopm_hash_table_insert(wt->ht_identifier, string_elem(current->place), string_elem(merch->name));
+        ioopm_hash_table_insert(wh->ht_identifier, string_elem(current->place), string_elem(merch->name));
         ioopm_list_iterator_advance(list_iter);
     }
     ioopm_list_iterator_destroy(list_iter);
 }
 
-void edit_merch(warehouse_t *wt) {
+void edit_merch(warehouse_t *wh) {
     elem_t result;
     elem_t ignore;
     char *old_name = ask_question_string("Name of item you want to edit\n");
-    if (ioopm_hash_table_lookup(wt->ht_merch, string_elem(old_name), &result)) {
+    if (ioopm_hash_table_lookup(wh->ht_merch, string_elem(old_name), &result)) {
         merch_t *merch = result.p; 
         char *new_name = ask_question_string("Item's new name:");
         char *new_desc = ask_question_string("Description of item:");
         int new_price = ask_question_int("Price of new item:");
-        if (!ioopm_hash_table_lookup(wt->ht_merch, string_elem(new_name), &result) || strcmp(old_name, new_name) == 0) {
-            ioopm_hash_table_remove(wt->ht_merch, string_elem(old_name), &ignore);
+        if (!ioopm_hash_table_lookup(wh->ht_merch, string_elem(new_name), &result) || strcmp(old_name, new_name) == 0) {
+            ioopm_hash_table_remove(wh->ht_merch, string_elem(old_name), &ignore);
             char *previous_name = merch->name;
             char *previous_desc = merch->desc;
             merch->desc = new_desc;
             merch->price = new_price;
-            change_location_name(wt, merch);
-            ioopm_hash_table_insert(wt->ht_merch, string_elem(new_name), ptr_elem(merch));
+            change_location_name(wh, merch);
+            ioopm_hash_table_insert(wh->ht_merch, string_elem(new_name), ptr_elem(merch));
             free(previous_name);
             free(previous_desc);
         }
@@ -253,9 +262,9 @@ static ioopm_list_t *sort_list(ioopm_list_t *locations){
 
 
 
-void show_stock(warehouse_t *wt, char* merch_name) {
+void show_stock(warehouse_t *wh, char* merch_name) {
     elem_t result; 
-    if (ioopm_hash_table_lookup(wt->ht_merch, string_elem(merch_name), &result)) {
+    if (ioopm_hash_table_lookup(wh->ht_merch, string_elem(merch_name), &result)) {
         merch_t *merch = result.p; 
         ioopm_list_t *sorted_list = sort_list(merch->locations);
         ioopm_list_iterator_t *iter = ioopm_list_iterator_create(sorted_list); 
@@ -272,22 +281,26 @@ void show_stock(warehouse_t *wt, char* merch_name) {
 }
 
 bool replenish_stock(warehouse_t *wh, char *merch_name, char* storage_id, int stock_increase){
-
+    if(stock_increase <= 0) return false;
     
-    //Huvud if satsen är om produkten ens finns, isåfall är det över
-    //Sedan kollar jag om platsen finns i location_ht, isåfall kan jag använda infon om vad den ska stora
-    //där och sedan kolla i linkade lista för att se så dem stämmer. Isåfall bara att öka belopp
-    //
+    //Huvud if satsen är om produkten ens finns, om inte så är det över
+    //Sedan kollar jag om platsen finns i location_ht, om platsen finns och varan finns kan jag börja jobba
+    // (först säkerställa så att de matchar namnet jag fått in och den i locations_ht).
+    //Sedan kan jag helt enkelt börja jobba i linkade listan och öka värdet med vad som ska ökas.
+
     //nästa fall är om det som den sparar i ht_locations inte stämmer med ht_merch
     //Sista fall är om varan finns men varuplatsen finns inte, då måste en ny skapas och den platsen samt
-    //stocken appendas i listan
+    //stocken appendas i listan. (säkerställ i listan bara att platsen faktiskt inte finns)
+    elem_t merch_exists;
     elem_t found_merch_elem;
-    if(!ioopm_hash_table_lookup(wh->ht_merch, string_elem(merch_name), &found_merch_elem)) return false; //finns ens vara
+    if(!ioopm_hash_table_lookup(wh->ht_merch, string_elem(merch_name), &merch_exists)) return false; //finns ens vara
     else if(ioopm_hash_table_lookup(wh->ht_identifier, string_elem(storage_id), &found_merch_elem)) { // Vara finns men finns platsen
+        char *found_merch = found_merch_elem.s;
+        //Detta är vad själva merchen heter
+        if(strcmp(found_merch, merch_name) != 0) return false;
+        
         elem_t locations_elem;
-        merch_t *found_merch = found_merch_elem.p;
-
-        if(ioopm_hash_table_lookup(wh->ht_merch, string_elem(found_merch->name), &locations_elem)){//Den sagda varan som ska sparas på plats, spara dens lista.
+        if(ioopm_hash_table_lookup(wh->ht_merch, string_elem(found_merch), &locations_elem)){//Den sagda varan som ska sparas på plats, spara dens lista.
             merch_t *locations_merch = locations_elem.p;
             ioopm_list_t *locations_list = locations_merch->locations;
 
@@ -297,24 +310,158 @@ bool replenish_stock(warehouse_t *wh, char *merch_name, char* storage_id, int st
                 shelf_t *current_shelf = current_iter.p;
                 if(strcmp(current_shelf->place, storage_id) == 0){
                     current_shelf->stock += stock_increase;
+                    ioopm_list_iterator_destroy(list_iter);            
                     return true;
                 }
             ioopm_list_iterator_advance(list_iter);
         }
+        ioopm_list_iterator_destroy(list_iter);
         return false;
     }
     return false;
 
     }
     //I detta fall finns inte platsen med i lista, varan finns dock, därför måste en ny plats skapas och den sedan appendas i rätt lista
-    merch_t *found_merch = found_merch_elem.p;
+    merch_t *found_merch = merch_exists.p;
     ioopm_list_t *locations = found_merch->locations;
     shelf_t *new_shelf = create_shelf(storage_id, stock_increase);
     ioopm_list_append(locations, ptr_elem(new_shelf));
-    ioopm_hash_table_insert(wh->ht_identifier, string_elem(storage_id), string_elem(found_merch->name));
+    ioopm_hash_table_insert(wh->ht_identifier, string_elem(new_shelf->place), string_elem(found_merch->name));
     return true;
+}
+
+cart_t *create_cart(warehouse_t *wh) {
+    cart_t *new = calloc(sizeof(cart_t), 1);
+    new->id = wh->carts_amount;
+    wh->carts_amount++;
+    return new;
+}
+
+static bool find_cart(warehouse_t *wh, int cart_id, cart_t **result){
+    ioopm_list_t *list = wh->carts;
+    ioopm_list_iterator_t *iter = ioopm_list_iterator_create(list);
+    while (!ioopm_list_iterator_at_end(iter)) {
+        elem_t cart = ioopm_list_iterator_current(iter);
+        cart_t *current_cart = cart.p;
+        if (current_cart->id == cart_id) {
+            *result = current_cart;
+            ioopm_list_iterator_destroy(iter);
+            return true;
+        }
+        else{
+            ioopm_list_iterator_advance(iter);
+        }
+    }
+    ioopm_list_iterator_destroy(iter);
+    return false;
+}
+
+bool remove_cart(warehouse_t *wh, int id) {
+    ioopm_list_t *list = wh->carts;
+    elem_t to_remove;
+    int counter = 0;
+    ioopm_list_iterator_t *iter = ioopm_list_iterator_create(list);
+    while (!ioopm_list_iterator_at_end(iter)) {
+        elem_t cart = ioopm_list_iterator_current(iter);
+        cart_t *current_cart = cart.p;
+        if (current_cart->id == id) {
+            ioopm_list_remove(list, counter, &to_remove);
+            ioopm_hash_table_destroy(current_cart->items);
+            free(current_cart);
+            free(iter);
+            wh->carts_amount--;
+            return true;
+        }
+        else {
+            ioopm_list_iterator_advance(iter);
+            counter++;
+        }
+    }
+    free(iter);
+    return false;
+}
+
+static int total_stock_for_item(warehouse_t *wh, elem_t merch_name){
+    int total = 0;
+    elem_t result;
+    ioopm_hash_table_lookup(wh->ht_merch, merch_name, &result);
+    merch_t *found_merch = result.p;
+    ioopm_list_iterator_t *iter = ioopm_list_iterator_create(found_merch->locations);
+    while(!ioopm_list_iterator_at_end(iter)){
+        shelf_t *current_stock = ioopm_list_iterator_current(iter).p;
+        total += current_stock->stock;
+        ioopm_list_iterator_advance(iter);
+    }
+    return total;
+}
+
+ 
     
+    
+void add_to_cart(warehouse_t *wh, elem_t key, elem_t quantity, int id) {
+   ioopm_list_t *carts = wh->carts;
+   int counter = 0;
+   ioopm_list_iterator_t *cart_iter = ioopm_list_iterator_create(carts);
+   while (!ioopm_list_iterator_at_end(cart_iter)) {
+     elem_t cart_pointer = ioopm_list_iterator_current(cart_iter);
+     cart_t *cart = cart_pointer.p;
+     ioopm_hash_table_t *current_cart = cart->items;
+     if (ioopm_hash_table_has_key(current_cart, key)) {
+        elem_t amount;
+        ioopm_hash_table_lookup(current_cart, key, &amount);
+        counter = counter + amount.i;
+        ioopm_list_iterator_advance(cart_iter);
+     }
+     else {
+        ioopm_list_iterator_advance(cart_iter);
+     }
+   }
+   int total_stock = total_stock_for_item(wh, key);
+   int cart_max_amount = total_stock - counter;
+   if (counter < total_stock && quantity.i <= cart_max_amount && quantity.i > 0) {
+      ioopm_list_iterator_t *find_cart_iter = ioopm_list_iterator_create(carts);
+      while (!ioopm_list_iterator_at_end(find_cart_iter)) {
+        elem_t cart = ioopm_list_iterator_current(find_cart_iter);
+        cart_t *current_cart = cart.p;
+        if (current_cart->id == id) {
+            elem_t amount_of_item; 
+            ioopm_hash_table_t *items_in_cart = current_cart->items;
+            if (ioopm_hash_table_lookup(items_in_cart, key, &amount_of_item)) {
+                amount_of_item.i += quantity.i;
+                ioopm_hash_table_insert(items_in_cart, key, amount_of_item);
+                break;
+            }
+            else {
+                ioopm_hash_table_insert(items_in_cart, key, quantity);
+                break;
+            }
+        }
+        else {
+            ioopm_list_iterator_advance(find_cart_iter);
+        }
+      }
+   }
+    else {
+        printf("Quantity is too high or other carts have already reserved requested items, max allowed is : %d", total_stock);
+   }
 }
 
 
-
+int calculate_cost(warehouse_t *wh, int cart_id){
+    int cost = 0;
+    cart_t *cart;
+    if (find_cart(wh, cart_id, &cart)){ 
+        ioopm_hash_table_iterator_t *hash_iter = ioopm_hash_table_iterator_create(cart->items);
+        while(!ioopm_hash_table_iterator_at_end(hash_iter)){
+            char *key = ioopm_hash_table_iterator_current_key(hash_iter).s;
+            elem_t found;
+            ioopm_hash_table_lookup(wh->ht_merch, string_elem(key), &found);
+            merch_t *merch = found.p;
+        cost += merch->price * ioopm_hash_table_iterator_current_value(hash_iter).i;
+        ioopm_hash_table_iterator_advance(hash_iter);
+    }
+    ioopm_hash_table_iterator_destroy(hash_iter);
+    return cost;
+    }
+    return -1;
+}

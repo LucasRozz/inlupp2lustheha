@@ -196,30 +196,32 @@ static void change_location_name(warehouse_t *wh, merch_t *merch) {
     ioopm_list_iterator_destroy(list_iter);
 }
 
-void edit_merch(warehouse_t *wh) {
+//Ändrad så den inte tar någon input utan det görs genom UI
+//Frigör gamla namn och beskrivning, gör kopia av sträng den fått in så warehouse har ansvar att frigöra
+//problem med två kopior, det måste fixas men apllar inte nu
+bool edit_merch(warehouse_t *wh, char *old_name, char *new_name, char *new_desc, int new_price) {
     elem_t result;
     elem_t ignore;
-    char *old_name = ask_question_string("Name of item you want to edit\n");
     if (ioopm_hash_table_lookup(wh->ht_merch, string_elem(old_name), &result)) {
         merch_t *merch = result.p; 
-        char *new_name = ask_question_string("Item's new name:");
-        char *new_desc = ask_question_string("Description of item:");
-        int new_price = ask_question_int("Price of new item:");
         if (!ioopm_hash_table_lookup(wh->ht_merch, string_elem(new_name), &result) || strcmp(old_name, new_name) == 0) {
             ioopm_hash_table_remove(wh->ht_merch, string_elem(old_name), &ignore);
             char *previous_name = merch->name;
             char *previous_desc = merch->desc;
-            merch->desc = new_desc;
+            merch->name = strdup(new_name);
+            merch->desc = strdup(new_desc);
             merch->price = new_price;
             change_location_name(wh, merch);
-            ioopm_hash_table_insert(wh->ht_merch, string_elem(new_name), ptr_elem(merch));
+            ioopm_hash_table_insert(wh->ht_merch, string_elem(strdup(new_name)), ptr_elem(merch));
             free(previous_name);
             free(previous_desc);
+            return true;
         }
         else {
-            printf("Item already exists");
+            return false;
         }
     }
+    return false;
 }
 
 

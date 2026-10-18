@@ -15,6 +15,9 @@ business.o: business.c business.h
 utils.o: utils.c utils.h
 	gcc $(CFLAGS) -c $< -o $@
 
+ui.o: ui.c ui.h
+	gcc $(CFLAGS) -c $< -o $@
+
 tests: business.o utils.o business_test.c $(GENERIC)
 	gcc $(CFLAGS) $^ -o $@ -lcunit
 
@@ -24,5 +27,8 @@ memtest: tests
 print: $(GENERIC) business.o utils.o business_print_tests.c
 	gcc $(CFLAGS) $^ -o $@
 
+event_loop: $(GENERIC) business.o utils.o ui.o event_loop.c
+	gcc $(CFLAGS) $^ -o $@
+
 clean:
-	rm -f *.o tests test a.out
+	rm -f *.o tests test a.out event_loop

@@ -114,6 +114,15 @@ void test_replenish(void){
   destroy_warehouse(wh);
 }
 
+void create_and_destroy_cart(void){
+  warehouse_t *wh = create_warehouse();
+
+  create_cart(wh);
+  
+
+  destroy_warehouse(wh);
+}
+
 int main()
 {
   // First we try to set up CUnit, and exit if we fail
@@ -141,6 +150,7 @@ int main()
       (CU_add_test(my_test_suite, "test_remove", test_remove) == NULL) ||
       (CU_add_test(my_test_suite, "test_edit", test_edit) == NULL) ||
       (CU_add_test(my_test_suite, "test_replenish", test_replenish) == NULL) ||
+      (CU_add_test(my_test_suite, "create_and_destroy_cart", create_and_destroy_cart) == NULL) ||
       0)
   {
     // If adding any of the tests fails, we tear down CUnit and exit

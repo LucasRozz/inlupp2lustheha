@@ -19,11 +19,6 @@ struct shelf {
     int stock; 
 };
 
-struct link
-{
-    shelf_t *value;
-    link_t *next;
-};
 
 struct merch {
     char* name;
@@ -68,6 +63,26 @@ static shelf_t *create_shelf(char *storage, int stock){
     new_shelf->stock = stock;
     return new_shelf;
 }
+
+void create_cart(warehouse_t *wh) {
+    cart_t *new = calloc(sizeof(cart_t), 1);
+    new->items = ioopm_hash_table_create(hash_function, eq_function);
+    new->id = wh->carts_amount;
+    ioopm_list_append(wh->carts, ptr_elem(new));
+    wh->carts_amount++;
+    return;
+}
+
+//HAS REPSONSIBILITY FOR ALMOST ALL MERCH AND HASHTABLES AND STUFF
+warehouse_t *create_warehouse(){
+    warehouse_t *new = calloc(sizeof(warehouse_t), 1);
+    new->ht_identifier = ioopm_hash_table_create(hash_function, eq_function);
+    new->ht_merch = ioopm_hash_table_create(hash_function, eq_function);
+    new->ht_cart = ioopm_hash_table_create(hash_function, eq_function);
+    new->carts = ioopm_list_create();
+    return new;
+}
+
 static void free_all_locations(ioopm_list_t *locations){
     ioopm_list_iterator_t *iter = ioopm_list_iterator_create(locations);
 
@@ -102,6 +117,19 @@ static void free_all_merch(ioopm_hash_table_t *ht){
     return;
 }
 
+static void free_all_carts(ioopm_list_t *carts){
+    ioopm_list_iterator_t *iter = ioopm_list_iterator_create(carts);
+    while(!ioopm_list_iterator_at_end(iter)){
+        cart_t *current_cart = ioopm_list_iterator_current(iter).p;
+        ioopm_hash_table_destroy(current_cart->items);
+        free(current_cart);
+        ioopm_list_iterator_advance(iter);
+    }
+    ioopm_list_iterator_destroy(iter);
+    ioopm_list_destroy(carts);
+
+}
+
 static merch_t *make_item(char *name, char *desc, int price){
     merch_t *new_merch = calloc(1, sizeof(merch_t));
     new_merch->name = strdup(name);
@@ -112,22 +140,15 @@ static merch_t *make_item(char *name, char *desc, int price){
     return new_merch;
 }
 
-//HAS REPSONSIBILITY FOR ALMOST ALL MERCH AND HASHTABLES AND STUFF
-warehouse_t *create_warehouse(){
-    warehouse_t *new = calloc(sizeof(warehouse_t), 1);
-    new->ht_identifier = ioopm_hash_table_create(hash_function, eq_function);
-    new->ht_merch = ioopm_hash_table_create(hash_function, eq_function);
-    new->ht_cart = ioopm_hash_table_create(hash_function, eq_function);
-    new->carts = ioopm_list_create();
-    return new;
-}
+
 
 void destroy_warehouse(warehouse_t *wh){
     free_all_merch(wh->ht_merch);    
     ioopm_hash_table_destroy(wh->ht_identifier);
     ioopm_hash_table_destroy(wh->ht_merch);
+    free_all_carts(wh->carts);
     ioopm_hash_table_destroy(wh->ht_cart);
-    ioopm_list_destroy(wh->carts);
+
     free(wh);
 }
 
@@ -145,18 +166,7 @@ bool add_item(warehouse_t *wh, char *name, char *desc, int price) {;
 }
 
 //UI
-void input_item(warehouse_t *wh){
-    char *name = ask_question_string("Varans namn:");
-    char *desc = ask_question_string("Varubeskrivning:");
-    int price = ask_question_int("Varans kostnad (uttryckt i ören):");
 
-    if(!add_item(wh, name, desc, price)){ // Frees the data even if the item exists
-        printf("Varan finns redan\n");
-    }
-    free(name);
-    free(desc);
-    return;
-}
 
 
 //UI
@@ -360,12 +370,6 @@ bool replenish_stock(warehouse_t *wh, char *merch_name, char* storage_id, int st
     return true;
 }
 
-cart_t *create_cart(warehouse_t *wh) {
-    cart_t *new = calloc(sizeof(cart_t), 1);
-    new->id = wh->carts_amount;
-    wh->carts_amount++;
-    return new;
-}
 
 static bool find_cart(warehouse_t *wh, int cart_id, cart_t **result){
     ioopm_list_t *list = wh->carts;

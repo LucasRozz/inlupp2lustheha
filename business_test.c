@@ -116,9 +116,25 @@ void test_replenish(void){
 
 void create_and_destroy_cart(void){
   warehouse_t *wh = create_warehouse();
+  create_cart(wh);
+  destroy_warehouse(wh);
+}
+
+void test_add_to_cart(void){
+  warehouse_t *wh = create_warehouse();
+
+  CU_ASSERT_TRUE(add_item(wh, "shurda", "detta är shurda", 1000));
+  CU_ASSERT_TRUE(add_item(wh, "shurda2", "detta är shurda2", 1000));
+  CU_ASSERT_TRUE(add_item(wh, "shurda3", "detta är shurda3", 1000));
+  CU_ASSERT_TRUE(add_item(wh, "shurda4", "detta är shurda4", 1000));
+  CU_ASSERT_TRUE(add_item(wh, "shurda67", "detta är shurda67", 1000));
+  replenish_stock(wh, "shurda", "A25", 10);
 
   create_cart(wh);
-  
+  CU_ASSERT_TRUE(add_to_cart(wh, string_elem("shurda"), int_elem(2), 1));
+  CU_ASSERT_FALSE(add_to_cart(wh, string_elem("shurda"), int_elem(9), 1));
+
+  CU_ASSERT_EQUAL(calculate_cost(wh, 1), 2000);
 
   destroy_warehouse(wh);
 }
@@ -151,6 +167,7 @@ int main()
       (CU_add_test(my_test_suite, "test_edit", test_edit) == NULL) ||
       (CU_add_test(my_test_suite, "test_replenish", test_replenish) == NULL) ||
       (CU_add_test(my_test_suite, "create_and_destroy_cart", create_and_destroy_cart) == NULL) ||
+      (CU_add_test(my_test_suite, "test_add_to_cart", test_add_to_cart) == NULL) ||
       0)
   {
     // If adding any of the tests fails, we tear down CUnit and exit

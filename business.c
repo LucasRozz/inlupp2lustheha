@@ -67,7 +67,7 @@ static shelf_t *create_shelf(char *storage, int stock){
 void create_cart(warehouse_t *wh) {
     cart_t *new = calloc(sizeof(cart_t), 1);
     new->items = ioopm_hash_table_create(hash_function, eq_function);
-    new->id = wh->carts_amount;
+    new->id = wh->carts_amount + 1;
     ioopm_list_append(wh->carts, ptr_elem(new));
     wh->carts_amount++;
     return;
@@ -426,57 +426,59 @@ static int total_stock_for_item(warehouse_t *wh, elem_t merch_name){
         total += current_stock->stock;
         ioopm_list_iterator_advance(iter);
     }
+    ioopm_list_iterator_destroy(iter);
     return total;
 }
     
-    
-void add_to_cart(warehouse_t *wh, elem_t key, elem_t quantity, int id) {
-   ioopm_list_t *carts = wh->carts;
-   int counter = 0;
-   ioopm_list_iterator_t *cart_iter = ioopm_list_iterator_create(carts);
-   while (!ioopm_list_iterator_at_end(cart_iter)) {
-     elem_t cart_pointer = ioopm_list_iterator_current(cart_iter);
-     cart_t *cart = cart_pointer.p;
-     ioopm_hash_table_t *current_cart = cart->items;
-     if (ioopm_hash_table_has_key(current_cart, key)) {
-        elem_t amount;
-        ioopm_hash_table_lookup(current_cart, key, &amount);
-        counter = counter + amount.i;
-        ioopm_list_iterator_advance(cart_iter);
-     }
-     else {
-        ioopm_list_iterator_advance(cart_iter);
-     }
-   }
-   int total_stock = total_stock_for_item(wh, key);
-   int cart_max_amount = total_stock - counter;
-   if (counter < total_stock && quantity.i <= cart_max_amount && quantity.i > 0) {
-      ioopm_list_iterator_t *find_cart_iter = ioopm_list_iterator_create(carts);
-      while (!ioopm_list_iterator_at_end(find_cart_iter)) {
-        elem_t cart = ioopm_list_iterator_current(find_cart_iter);
-        cart_t *current_cart = cart.p;
-        if (current_cart->id == id) {
-            elem_t amount_of_item; 
-            ioopm_hash_table_t *items_in_cart = current_cart->items;
-            if (ioopm_hash_table_lookup(items_in_cart, key, &amount_of_item)) {
-                amount_of_item.i += quantity.i;
-                //Här bör vi kanske lägga till någon slags reserverad mängd så vi kan hålla koll
-                ioopm_hash_table_insert(items_in_cart, key, amount_of_item);
-                break;
-            }
-            else {
-                ioopm_hash_table_insert(items_in_cart, key, quantity);
-                break;
-            }
+bool add_to_cart(warehouse_t *wh, elem_t key, elem_t quantity, int id) {
+    elem_t ignore;
+    cart_t *current_cart;
+
+    if(!ioopm_hash_table_lookup(wh->ht_merch, key, &ignore)) return false;
+    if(!find_cart(wh, id, &current_cart)) return false;
+
+
+    ioopm_list_t *carts = wh->carts;
+    int counter = 0;
+    ioopm_list_iterator_t *cart_iter = ioopm_list_iterator_create(carts);
+
+    while (!ioopm_list_iterator_at_end(cart_iter)) {
+        elem_t cart_pointer = ioopm_list_iterator_current(cart_iter);
+        cart_t *cart = cart_pointer.p;
+        ioopm_hash_table_t *current_cart = cart->items;
+        if (ioopm_hash_table_has_key(current_cart, key)) {
+            elem_t amount;
+            ioopm_hash_table_lookup(current_cart, key, &amount);
+            counter = counter + amount.i;
+            ioopm_list_iterator_advance(cart_iter);
         }
         else {
-            ioopm_list_iterator_advance(find_cart_iter);
+        ioopm_list_iterator_advance(cart_iter);
         }
-      }
-   }
+    }
+    ioopm_list_iterator_destroy(cart_iter);
+
+    int total_stock = total_stock_for_item(wh, key);
+    int cart_max_amount = total_stock - counter;
+    if (counter < total_stock && quantity.i <= cart_max_amount && quantity.i > 0) {
+                
+        ioopm_hash_table_t *items_in_cart = current_cart->items;
+        elem_t amount_of_item;
+        if (ioopm_hash_table_lookup(items_in_cart, key, &amount_of_item)) {
+            amount_of_item.i += quantity.i;
+              //Här bör vi kanske lägga till någon slags reserverad mängd så vi kan hålla koll
+            ioopm_hash_table_insert(items_in_cart, key, amount_of_item);
+            return true;
+        }
+        else {
+            ioopm_hash_table_insert(items_in_cart, key, quantity);
+            return true;
+        }
+    }
     else {
         printf("Quantity is too high or other carts have already reserved requested items, max allowed is : %d", total_stock);
-   }
+        return false;
+    }
 }
 
 

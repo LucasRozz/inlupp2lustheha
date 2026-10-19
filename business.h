@@ -19,4 +19,7 @@ bool remove_item(warehouse_t *wt, char *remove);
 bool edit_merch(warehouse_t *wh, char *old_name, char *new_name, char *new_desc, int new_price);
 void show_stock(warehouse_t *wt, char* merch_name);
 bool replenish_stock(warehouse_t *wh, char *merch_name, char* storage_id, int stock_increase);
+bool remove_cart(warehouse_t *wh, int id);
+bool add_to_cart(warehouse_t *wh, elem_t key, elem_t quantity, int id);
+int calculate_cost(warehouse_t *wh, int cart_id);
 

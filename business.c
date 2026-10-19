@@ -428,8 +428,6 @@ static int total_stock_for_item(warehouse_t *wh, elem_t merch_name){
     }
     return total;
 }
-
- 
     
     
 void add_to_cart(warehouse_t *wh, elem_t key, elem_t quantity, int id) {
@@ -462,6 +460,7 @@ void add_to_cart(warehouse_t *wh, elem_t key, elem_t quantity, int id) {
             ioopm_hash_table_t *items_in_cart = current_cart->items;
             if (ioopm_hash_table_lookup(items_in_cart, key, &amount_of_item)) {
                 amount_of_item.i += quantity.i;
+                //Här bör vi kanske lägga till någon slags reserverad mängd så vi kan hålla koll
                 ioopm_hash_table_insert(items_in_cart, key, amount_of_item);
                 break;
             }
@@ -498,4 +497,26 @@ int calculate_cost(warehouse_t *wh, int cart_id){
     return cost;
     }
     return -1;
+}
+
+
+bool remove_from_cart(warehouse_t *wh, int cart_id, char *merch_name, int amount){
+    cart_t *cart;
+    elem_t found;
+    if(find_cart(wh, cart_id, &cart)){
+        if(ioopm_hash_table_lookup(cart->items, string_elem(merch_name), &found)){
+            if(found.i >= amount){
+                found.i -= amount;
+                //VI bör kanske ge tbx till det reserverade beloppet?
+                ioopm_hash_table_insert(cart->items, string_elem(merch_name), int_elem(found.i));
+                if(found.i == 0){
+                    ioopm_hash_table_remove(cart->items, string_elem(merch_name), &found);
+                }
+                return true;
+            }
+            return false;
+        }
+        return false;
+    }
+    return false;
 }

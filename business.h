@@ -9,7 +9,6 @@ typedef struct cart cart_t;
 warehouse_t *create_warehouse();
 void create_cart(warehouse_t *wh);
 
-
 void destroy_warehouse(warehouse_t *wh);
 
 void show_stock(warehouse_t *wt, char* merch_name);
@@ -20,6 +19,9 @@ bool edit_merch(warehouse_t *wh, char *old_name, char *new_name, char *new_desc,
 void show_stock(warehouse_t *wt, char* merch_name);
 bool replenish_stock(warehouse_t *wh, char *merch_name, char* storage_id, int stock_increase);
 bool remove_cart(warehouse_t *wh, int id);
-bool add_to_cart(warehouse_t *wh, elem_t key, elem_t quantity, int id);
+bool add_to_cart_og(warehouse_t *wh, elem_t key, elem_t quantity, int id);
+bool add_to_cart_tester(warehouse_t *wh, char *key, int quantity, int id);
 int calculate_cost(warehouse_t *wh, int cart_id);
+bool remove_from_cart(warehouse_t *wh, int cart_id, char *merch_name, int amount);
 
+void print_carts(warehouse_t *wh);

@@ -67,10 +67,15 @@ static shelf_t *create_shelf(char *storage, int stock){
 void create_cart(warehouse_t *wh) {
     cart_t *new = calloc(sizeof(cart_t), 1);
     new->items = ioopm_hash_table_create(hash_function, eq_function);
-    new->id = wh->carts_amount + 1;
-    ioopm_list_append(wh->carts, ptr_elem(new));
     wh->carts_amount++;
+    new->id = wh->carts_amount;
+    ioopm_list_append(wh->carts, ptr_elem(new));
     return;
+}
+
+int get_added_cart_id(warehouse_t *wh){
+    ioopm_list_t *carts = wh->carts;
+    return ioopm_list_size(carts);
 }
 
 //HAS REPSONSIBILITY FOR ALMOST ALL MERCH AND HASHTABLES AND STUFF
@@ -166,6 +171,24 @@ bool add_item(warehouse_t *wh, char *name, char *desc, int price) {;
 }
 
 //UI
+bool lookup_merch(warehouse_t *wh, char *merch){
+    elem_t ignore;
+    return ioopm_hash_table_lookup(wh->ht_merch, string_elem(merch), &ignore);
+}
+
+int get_price(warehouse_t *wh, char *merch){
+    elem_t result;
+    ioopm_hash_table_lookup(wh->ht_merch, string_elem(merch), &result);
+    merch_t *found_merch = result.p;
+    return found_merch->price;
+}
+
+char *get_desc(warehouse_t *wh, char *merch){
+    elem_t result;
+    ioopm_hash_table_lookup(wh->ht_merch, string_elem(merch), &result);
+    merch_t *found_merch = result.p;
+    return found_merch->desc;
+}
 
 
 
@@ -180,6 +203,7 @@ void list_items(warehouse_t *wh) {
     for (int i = 1; i <= 20; i++) {
         if (ioopm_hash_table_iterator_at_end(iter)) {
             printf("Last item reached\n");
+            ioopm_hash_table_iterator_destroy(iter);
             return;
         }
         else {
@@ -403,7 +427,6 @@ bool remove_cart(warehouse_t *wh, int id) {
             ioopm_hash_table_destroy(current_cart->items);
             free(current_cart);
             free(iter);
-            wh->carts_amount--;
             return true;
         }
         else {
@@ -429,12 +452,13 @@ static int total_stock_for_item(warehouse_t *wh, elem_t merch_name){
     ioopm_list_iterator_destroy(iter);
     return total;
 }
-    
-bool add_to_cart(warehouse_t *wh, elem_t key, elem_t quantity, int id) {
-    elem_t ignore;
+
+bool add_to_cart(warehouse_t *wh, char *key, int quantity, int id) {
+    elem_t merch;
     cart_t *current_cart;
 
-    if(!ioopm_hash_table_lookup(wh->ht_merch, key, &ignore)) return false;
+    if(!ioopm_hash_table_lookup(wh->ht_merch, string_elem(key), &merch)) return false;
+    merch_t *merch_to_add = merch.p;
     if(!find_cart(wh, id, &current_cart)) return false;
 
 
@@ -446,9 +470,9 @@ bool add_to_cart(warehouse_t *wh, elem_t key, elem_t quantity, int id) {
         elem_t cart_pointer = ioopm_list_iterator_current(cart_iter);
         cart_t *cart = cart_pointer.p;
         ioopm_hash_table_t *current_cart = cart->items;
-        if (ioopm_hash_table_has_key(current_cart, key)) {
+        if (ioopm_hash_table_has_key(current_cart, string_elem(key))) {
             elem_t amount;
-            ioopm_hash_table_lookup(current_cart, key, &amount);
+            ioopm_hash_table_lookup(current_cart, string_elem(key), &amount);
             counter = counter + amount.i;
             ioopm_list_iterator_advance(cart_iter);
         }
@@ -458,25 +482,24 @@ bool add_to_cart(warehouse_t *wh, elem_t key, elem_t quantity, int id) {
     }
     ioopm_list_iterator_destroy(cart_iter);
 
-    int total_stock = total_stock_for_item(wh, key);
+    int total_stock = total_stock_for_item(wh, string_elem(key));
     int cart_max_amount = total_stock - counter;
-    if (counter < total_stock && quantity.i <= cart_max_amount && quantity.i > 0) {
+    if (counter < total_stock && quantity <= cart_max_amount && quantity > 0) {
                 
         ioopm_hash_table_t *items_in_cart = current_cart->items;
         elem_t amount_of_item;
-        if (ioopm_hash_table_lookup(items_in_cart, key, &amount_of_item)) {
-            amount_of_item.i += quantity.i;
+        if (ioopm_hash_table_lookup(items_in_cart, string_elem(key), &amount_of_item)) {
+            amount_of_item.i += quantity;
               //Här bör vi kanske lägga till någon slags reserverad mängd så vi kan hålla koll
-            ioopm_hash_table_insert(items_in_cart, key, amount_of_item);
+            ioopm_hash_table_insert(items_in_cart, string_elem(merch_to_add->name), amount_of_item);
             return true;
         }
         else {
-            ioopm_hash_table_insert(items_in_cart, key, quantity);
+            ioopm_hash_table_insert(items_in_cart, string_elem(merch_to_add->name), int_elem(quantity));
             return true;
         }
     }
     else {
-        printf("Quantity is too high or other carts have already reserved requested items, max allowed is : %d", total_stock);
         return false;
     }
 }
@@ -502,14 +525,29 @@ int calculate_cost(warehouse_t *wh, int cart_id){
 }
 
 
+
+void print_carts(warehouse_t *wh){
+    ioopm_list_iterator_t *list_iter = ioopm_list_iterator_create(wh->carts);
+    while(!ioopm_list_iterator_at_end(list_iter)){
+        cart_t *cart = ioopm_list_iterator_current(list_iter).p;
+        ioopm_hash_table_iterator_t *hash_iter = ioopm_hash_table_iterator_create(cart->items);
+        printf("Cart id: %d\n", cart->id);
+        while(!ioopm_hash_table_iterator_at_end(hash_iter)){
+            printf("Vara: %s, mängd: %d\n", ioopm_hash_table_iterator_current_key(hash_iter).s, ioopm_hash_table_iterator_current_value(hash_iter).i);
+            ioopm_hash_table_iterator_advance(hash_iter);
+        }
+        ioopm_list_iterator_advance(list_iter);
+    }
+}
+
+
 bool remove_from_cart(warehouse_t *wh, int cart_id, char *merch_name, int amount){
     cart_t *cart;
     elem_t found;
     if(find_cart(wh, cart_id, &cart)){
         if(ioopm_hash_table_lookup(cart->items, string_elem(merch_name), &found)){
-            if(found.i >= amount){
+            if(amount <= found.i){
                 found.i -= amount;
-                //VI bör kanske ge tbx till det reserverade beloppet?
                 ioopm_hash_table_insert(cart->items, string_elem(merch_name), int_elem(found.i));
                 if(found.i == 0){
                     ioopm_hash_table_remove(cart->items, string_elem(merch_name), &found);
@@ -522,3 +560,4 @@ bool remove_from_cart(warehouse_t *wh, int cart_id, char *merch_name, int amount
     }
     return false;
 }
+

@@ -27,7 +27,7 @@ struct merch {
     ioopm_list_t *locations;
 };
 struct cart {
-    int id;
+    size_t id;
     ioopm_hash_table_t *items;
 };
 //A cart is a merch-> quantity hash table. In the linked list, each element is a cart which has its id and then the cart.
@@ -37,7 +37,7 @@ struct warehouse {
     ioopm_hash_table_t *ht_identifier;
     ioopm_hash_table_t *ht_cart;
     ioopm_list_t *carts;
-    int carts_amount;
+    size_t carts_amount;
 };
 
 static bool eq_function(elem_t a, elem_t b)
@@ -73,9 +73,8 @@ void create_cart(warehouse_t *wh) {
     return;
 }
 
-int get_added_cart_id(warehouse_t *wh){
-    ioopm_list_t *carts = wh->carts;
-    return ioopm_list_size(carts);
+size_t get_added_cart_id(warehouse_t *wh){
+    return wh->carts_amount;
 }
 
 //HAS REPSONSIBILITY FOR ALMOST ALL MERCH AND HASHTABLES AND STUFF
@@ -395,7 +394,7 @@ bool replenish_stock(warehouse_t *wh, char *merch_name, char* storage_id, int st
 }
 
 
-static bool find_cart(warehouse_t *wh, int cart_id, cart_t **result){
+static bool find_cart(warehouse_t *wh, size_t cart_id, cart_t **result){
     ioopm_list_t *list = wh->carts;
     ioopm_list_iterator_t *iter = ioopm_list_iterator_create(list);
     while (!ioopm_list_iterator_at_end(iter)) {
@@ -414,7 +413,7 @@ static bool find_cart(warehouse_t *wh, int cart_id, cart_t **result){
     return false;
 }
 
-bool remove_cart(warehouse_t *wh, int id) {
+bool remove_cart(warehouse_t *wh, size_t id) {
     ioopm_list_t *list = wh->carts;
     elem_t to_remove;
     int counter = 0;
@@ -453,7 +452,7 @@ static int total_stock_for_item(warehouse_t *wh, elem_t merch_name){
     return total;
 }
 
-bool add_to_cart(warehouse_t *wh, char *key, int quantity, int id) {
+bool add_to_cart(warehouse_t *wh, char *key, int quantity, size_t id) {
     elem_t merch;
     cart_t *current_cart;
 
@@ -505,7 +504,7 @@ bool add_to_cart(warehouse_t *wh, char *key, int quantity, int id) {
 }
 
 
-int calculate_cost(warehouse_t *wh, int cart_id){
+int calculate_cost(warehouse_t *wh, size_t cart_id){
     int cost = 0;
     cart_t *cart;
     if (find_cart(wh, cart_id, &cart)){ 
@@ -531,7 +530,7 @@ void print_carts(warehouse_t *wh){
     while(!ioopm_list_iterator_at_end(list_iter)){
         cart_t *cart = ioopm_list_iterator_current(list_iter).p;
         ioopm_hash_table_iterator_t *hash_iter = ioopm_hash_table_iterator_create(cart->items);
-        printf("Cart id: %d\n", cart->id);
+        printf("Cart id: %ld\n", cart->id);
         while(!ioopm_hash_table_iterator_at_end(hash_iter)){
             printf("Vara: %s, mängd: %d\n", ioopm_hash_table_iterator_current_key(hash_iter).s, ioopm_hash_table_iterator_current_value(hash_iter).i);
             ioopm_hash_table_iterator_advance(hash_iter);
@@ -541,7 +540,7 @@ void print_carts(warehouse_t *wh){
 }
 
 
-bool remove_from_cart(warehouse_t *wh, int cart_id, char *merch_name, int amount){
+bool remove_from_cart(warehouse_t *wh, size_t cart_id, char *merch_name, int amount){
     cart_t *cart;
     elem_t found;
     if(find_cart(wh, cart_id, &cart)){

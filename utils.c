@@ -111,10 +111,10 @@ bool correct_shelf(char *shelf){
 }
 
 bool accepted_menu(char *choice){
-  size_t length = strlen(choice);
   char *accepted = "AaLlDdEeSsPpCcRr+-=OoQq";
   for(size_t i = 0; i < strlen(accepted); i ++){
     if(choice[0] == accepted[i]){
+
       return true;
     }
   }
@@ -145,32 +145,6 @@ char *ask_question_shelf(char *question){
   return ask_question(question, correct_shelf, (convert_func *) strdup).string_value;
 }
 
-void print_menu(){
-  char *add = "[A]dd merchandise";
-  char *list = "[L]ist merchandise";
-  char *remove = "Remove merchandise with [D]";
-  char *edit = "[E]dit merchandise";
-  char *show = "[S]how stock";
-  char *replenish = "Re[P]lenish stock";
-  char *create_cart = "[C]reate cart";
-  char *rm_cart = "[R]emove cart";
-  char *add_to_cart = "Add a new cart with [+]";
-  char *rm_from_cart = "Remove from cart with [-]";
-  char *calc_cost = "Calculate the cost with [=]";
-  char *checkout = "Check[O]ut";
-  char *quit = "[Q]uit";
 
-  fprintf(stdout,"%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",add, list, remove, edit, show, replenish, create_cart, rm_cart, add_to_cart, rm_from_cart, calc_cost, checkout, quit);
-}
 
-char ask_question_menu(){
-  int buf_size = 50;
-  char buf[buf_size];
-  do {
-    print_menu();
-    read_string(buf, buf_size);
-    putchar('\n');
-  }while(!accepted_menu(buf));
-  return toupper(buf[0]);
-}
 

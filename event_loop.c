@@ -9,6 +9,7 @@
 int main(void){
     warehouse_t *wh = create_warehouse();
     add_item(wh, "shurda", "shurda", 1000);
+    replenish_stock(wh, "shurda", "A25", 100);
     char input;
     do{
     input = ask_question_menu();
@@ -86,19 +87,51 @@ int main(void){
     }
     else if(input == 'C'){
         create_cart(wh);
-        fprintf(stdout, "This is cart no: %d\n\n", get_added_cart_id(wh));
+        fprintf(stdout, "Cart with id: %ld was created\n\n", get_added_cart_id(wh));
     }
     else if(input == 'R'){
-        
+        size_t cart_to_remove = ask_question_int("Which cart do you want to remove?");
+        size_t carts = get_added_cart_id(wh);
+        if(cart_to_remove > carts || cart_to_remove <= 0){
+            fprintf(stdout,"Cart with ID: %ld does not exist\n", cart_to_remove);
+            continue;
+        }
+        remove_cart(wh, cart_to_remove);
+        fprintf(stdout, "\nCart with ID: %ld was removed\n\n", cart_to_remove);
     }
     else if(input == '+'){
-        
+        char *merch = ask_question_string("Name of the merch you want to add to the cart?");
+        int amount = ask_question_int("Amount of items to add to cart:");
+        size_t cart_to_add = ask_question_int("Which cart do you want to add to?");
+
+        if(!add_to_cart(wh, merch, amount, cart_to_add)){
+            fprintf(stdout,"\n%d %s could not be added to cart: %ld\n\n", amount, merch, cart_to_add);
+            continue;
+        }
+        fprintf(stdout,"\n%d of: %s was added to cart: %ld\n\n", amount, merch, cart_to_add);
+        free(merch);
     }
     else if(input == '-'){
-        
+        char *merch = ask_question_string("Name of the merch you want to remove from the cart?");
+        int amount = ask_question_int("Amount of items to remove from cart:");
+        size_t cart = ask_question_int("Which cart do you want to remove from?");
+
+        if(!remove_from_cart(wh, cart, merch, amount)){
+            fprintf(stdout,"\n%d %s could not be removed from cart: %ld\n\n", amount, merch, cart);
+            continue;
+        }   
+        fprintf(stdout,"\n%d %s was removed from cart: %ld\n\n", amount, merch, cart);
+        free(merch);
     }
     else if(input == '='){
-        
+        size_t cart = ask_question_int("Which cart do you want to calculate the cost for?");
+        int cost = calculate_cost(wh, cart);
+        if(cost == -1){
+            fprintf(stdout, "\n\nCart: %ld does not exist\n\n", cart);
+            continue;
+        }
+        cost = get_price(cost);
+        fprintf(stdout, "\n\nCurrent cost for cart: %ld is: %d\n\n", cart, cost);
     }
     else if(input == 'O'){
         

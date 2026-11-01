@@ -24,7 +24,7 @@ tests: business.o utils.o business_test.c $(GENERIC)
 memtest: tests
 	valgrind --leak-check=full ./tests
 
-print: $(GENERIC) business.o utils.o business_print_tests.c
+print: $(GENERIC) business.o utils.o ui.o business_print_tests.c
 	gcc $(CFLAGS) $^ -o $@
 
 event_loop: $(GENERIC) business.o utils.o ui.o event_loop.c

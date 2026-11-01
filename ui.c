@@ -65,47 +65,8 @@ bool confirm_removal(char* confirm){
   return false;
 }
 
-bool confirm_name_edit(warehouse_t *wh, char *old_name, char *new_name){
-  char *desc = get_desc(wh, old_name);
-  int price = get_price(wh, old_name);
-  fprintf(stdout, "\nCurrent merch:\nName: %s\nDescription: %s\nPrice: %d\n\n", old_name, desc, price);
-  fprintf(stdout, "Merch after change: \nName: %s\nDescription: %s\nPrice: %d\n\n", new_name, desc, price);
-  char *input = ask_question_string("Enter a string beginning with y or Y to confirm");
-
-  if(input[0] == 'y' ||  input[0] == 'Y'){
-    free(input);
-    return true;
-  }
-  free(input);
-  return false;
-}
-
-bool confirm_desc_edit(warehouse_t *wh, char *old_name, char *new_desc){
-  char *desc = get_desc(wh, old_name);
-  int price = get_price(wh, old_name);
-  fprintf(stdout, "Current merch:\nName: %s\nDescription: %s\nPrice: %d\n\n", old_name, desc, price);
-  fprintf(stdout, "Merch after change: \nName: %s\nDescription: %s\nPrice: %d\n", old_name, new_desc, price);
-  char *input = ask_question_string("Enter a string beginning with y or Y to confirm");
-
-  if(input[0] == 'y' ||  input[0] == 'Y'){
-    free(input);
-    return true;
-  }
-  free(input);
-  return false;
-}
-
-bool confirm_price_edit(warehouse_t *wh, char *old_name, int new_price){
-  char *desc = get_desc(wh, old_name);
-  int price = get_price(wh, old_name);
-  fprintf(stdout, "Current merch:\nName: %s\nDescription: %s\nPrice: %d\n\n", old_name, desc, price);
-  fprintf(stdout, "Merch after change: \nName: %s\nDescription: %s\nPrice: %d\n", old_name, desc, new_price);
-  char *input = ask_question_string("Enter a string beginning with y or Y to confirm");
-
-  if(input[0] == 'y' ||  input[0] == 'Y'){
-    free(input);
-    return true;
-  }
-  free(input);
-  return false;
+int get_price(int product_price){
+    int kr = product_price / 100;
+    int small = product_price % 100;
+    return kr+small;
 }

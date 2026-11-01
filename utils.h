@@ -24,8 +24,6 @@ answer_t ask_question(char *question, check_func *check, convert_func *convert);
 char *ask_question_string(char *question);
 int ask_question_int(char *question);
 char *ask_question_shelf(char *question);
-char ask_question_menu();
-void print_menu();
 
 
 

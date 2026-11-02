@@ -1,188 +1,588 @@
 #include <CUnit/Basic.h>
-#include "generic_data/linked_list.h"
-#include "generic_data/list_iterator.h"
-#include "generic_data/hash_table.h"
-#include "generic_data/hash_table_iterator.h"
-#include "generic_data/common.h"
-#include "utils.h"
+#include <stdbool.h>
+#include <stddef.h>
 #include "business.h"
 
-int init_suite(void)
+/*
+ * Tests for the warehouse business layer.
+ *
+ * All functions in business.c copy the strings they keep (strdup), so the
+ * tests can pass string literals directly.
+ *
+ * There is no public function for reading a merch's total stock, so stock is
+ * checked indirectly: a cart may reserve at most the total stock, so
+ * "add_to_cart(N) succeeds but add_to_cart(N + 1) fails" means the stock is N.
+ *
+ * Run under valgrind as well: several tests (remove, edit, checkout) mainly
+ * exist to catch double frees, use after free and leaks.
+ */
+
+int init_suite(void)  { return 0; }
+int clean_suite(void) { return 0; }
+
+/* ---------- helpers ---------- */
+
+static size_t new_cart(warehouse_t *wh)
 {
-  // Change this function if you want to do something *before* you
-  // run a test suite
-  return 0;
-}
-
-int clean_suite(void)
-{
-  // Change this function if you want to do something *after* you
-  // run a test suite
-  return 0;
-}
-
-// These are example test functions. You should replace them with
-// functions of your own.
-
-void test_correct_shelf(void){
-  CU_ASSERT_FALSE(correct_shelf("a12"));
-  CU_ASSERT_TRUE(correct_shelf("A12"));
-  CU_ASSERT_FALSE(correct_shelf("Aa12"));
-  CU_ASSERT_FALSE(correct_shelf("Ab2"));
-  CU_ASSERT_FALSE(correct_shelf("A2"));
-  CU_ASSERT_FALSE(correct_shelf("ABB2"));
-  CU_ASSERT_TRUE(correct_shelf("Q00"));
-}
-
-void test_add(void){
-  warehouse_t *wh = create_warehouse();
-  CU_ASSERT_TRUE(add_item(wh, "gas", "bra gerjer", 1000));
-  CU_ASSERT_FALSE(add_item(wh, "gas", "bra gerjer", 1000));
-  CU_ASSERT_TRUE(add_item(wh, "gasssy", "bra gerjer", 1000));
-  CU_ASSERT_TRUE(add_item(wh, "shurda", "bra gerjer", 1000));
-  CU_ASSERT_TRUE(add_item(wh, "shurda2", "bra gerjer", 1000));
-  CU_ASSERT_FALSE(add_item(wh, "shurda2", "bra gerjer", 1000));
-
-  destroy_warehouse(wh);
-}
-
-
-void test_remove(void){
-  warehouse_t *wh = create_warehouse();
-  add_item(wh, "shurda", "anis da don", 1500);
-  add_item(wh, "shurda2", "anis da don", 1500);
-  add_item(wh, "shurda3", "anis da don", 1500);
-  add_item(wh, "shurda4", "anis da don", 1500);
-
-  CU_ASSERT_TRUE(remove_item(wh, "shurda"));
-  CU_ASSERT_TRUE(add_item(wh, "shurda", "anis da don", 1500));
-  CU_ASSERT_TRUE(remove_item(wh, "shurda"));
-  CU_ASSERT_TRUE(remove_item(wh, "shurda2"));
-  CU_ASSERT_TRUE(remove_item(wh, "shurda3"));
-  CU_ASSERT_TRUE(remove_item(wh, "shurda4"));
-  CU_ASSERT_FALSE(remove_item(wh, "shurda"));
-  CU_ASSERT_FALSE(remove_item(wh, "yiipppsias"));
-
-
-  destroy_warehouse(wh);
-}
-
-void test_edit(void){
-  warehouse_t *wh = create_warehouse();
-
-  CU_ASSERT_TRUE(add_item(wh, "shurda", "detta är shurda", 1000));
-  CU_ASSERT_TRUE(add_item(wh, "shurda2", "detta är shurda2", 1000));
-  CU_ASSERT_TRUE(add_item(wh, "shurda3", "detta är shurda3", 1000));
-  CU_ASSERT_TRUE(add_item(wh, "shurda4", "detta är shurda4", 1000));
-
-  CU_ASSERT_FALSE(edit_merch(wh, "sha", "sa", "as", 1000));
-  CU_ASSERT_TRUE(edit_merch(wh, "shurda", "shurda55", "nya shurda", 50000));
-  CU_ASSERT_FALSE(add_item(wh, "shurda55", "hasas", 1000));
-  CU_ASSERT_TRUE(edit_merch(wh, "shurda55", "kslkso", "nya shurdasasas", 5002200));
-
-  CU_ASSERT_TRUE(remove_item(wh, "kslkso"));
-  destroy_warehouse(wh);
-
-}
-
-void test_replenish(void){
-  warehouse_t *wh = create_warehouse();
-
-  CU_ASSERT_TRUE(add_item(wh, "shurda", "detta är shurda", 1000));
-  CU_ASSERT_TRUE(add_item(wh, "shurda2", "detta är shurda2", 1000));
-  CU_ASSERT_TRUE(add_item(wh, "shurda3", "detta är shurda3", 1000));
-  CU_ASSERT_TRUE(add_item(wh, "shurda4", "detta är shurda4", 1000));
-  CU_ASSERT_TRUE(add_item(wh, "shurda67", "detta är shurda67", 1000));
-
-  CU_ASSERT_FALSE(replenish_stock(wh, "shurda", "A25", 0));
-  CU_ASSERT_TRUE(replenish_stock(wh, "shurda", "A25", 5));
-  CU_ASSERT_FALSE(replenish_stock(wh, "shurda68", "A23", 3));
-
-  CU_ASSERT_TRUE(replenish_stock(wh, "shurda", "A26", 120));
-  CU_ASSERT_TRUE(replenish_stock(wh, "shurda", "A26", 120));
-
-  CU_ASSERT_TRUE(replenish_stock(wh, "shurda67", "B01", 8));
-  CU_ASSERT_TRUE(replenish_stock(wh, "shurda67", "B02", 100));
-  CU_ASSERT_TRUE(replenish_stock(wh, "shurda67", "B04", 84));
-  CU_ASSERT_TRUE(replenish_stock(wh, "shurda67", "D50", 85));
-  CU_ASSERT_TRUE(replenish_stock(wh, "shurda67", "B05", 84));
-  CU_ASSERT_TRUE(replenish_stock(wh, "shurda67", "B05", 2));
-
-  
-
-
-  destroy_warehouse(wh);
-}
-
-void create_and_destroy_cart(void){
-  warehouse_t *wh = create_warehouse();
   create_cart(wh);
-  destroy_warehouse(wh);
+  return get_added_cart_id(wh);
 }
 
-void test_add_to_cart(void){
-  warehouse_t *wh = create_warehouse();
-
-  CU_ASSERT_TRUE(add_item(wh, "shurda", "detta är shurda", 1000));
-  CU_ASSERT_TRUE(add_item(wh, "shurda2", "detta är shurda2", 1000));
-  CU_ASSERT_TRUE(add_item(wh, "shurda3", "detta är shurda3", 1000));
-  CU_ASSERT_TRUE(add_item(wh, "shurda4", "detta är shurda4", 1000));
-  CU_ASSERT_TRUE(add_item(wh, "shurda67", "detta är shurda67", 1000));
-  replenish_stock(wh, "shurda", "A25", 10);
-
-  create_cart(wh);
-  CU_ASSERT_TRUE(add_to_cart(wh, string_elem("shurda"), int_elem(2), 1));
-  CU_ASSERT_FALSE(add_to_cart(wh, string_elem("shurda"), int_elem(9), 1));
-
-  CU_ASSERT_EQUAL(calculate_cost(wh, 1), 2000);
-
-  destroy_warehouse(wh);
-}
-
-int main()
+/* True if exactly `amount` units of `name` are available to reserve.
+   Uses a temporary cart, which is removed again afterwards. */
+static bool stock_is(warehouse_t *wh, char *name, int amount)
 {
-  // First we try to set up CUnit, and exit if we fail
+  size_t id = new_cart(wh);
+  bool exact;
+  if (amount == 0)
+    {
+      exact = !add_to_cart(wh, name, 1, id);
+    }
+  else
+    {
+      exact = add_to_cart(wh, name, amount, id) && !add_to_cart(wh, name, 1, id);
+    }
+  remove_cart(wh, id);
+  return exact;
+}
+
+/* ---------- warehouse ---------- */
+
+/* An empty warehouse can be created and destroyed without leaks. */
+void test_create_destroy(void)
+{
+  warehouse_t *wh = create_warehouse();
+  CU_ASSERT_PTR_NOT_NULL(wh);
+  destroy_warehouse(wh);
+}
+
+/* Destroying a warehouse that still holds merch, shelves and carts frees
+   everything (check with valgrind: 0 bytes lost). */
+void test_destroy_full_warehouse(void)
+{
+  warehouse_t *wh = create_warehouse();
+  add_item(wh, "Shoe", "Red shoe", 100);
+  add_item(wh, "Hat", "Blue hat", 50);
+  replenish_stock(wh, "Shoe", "A01", 5);
+  replenish_stock(wh, "Hat", "B02", 2);
+  size_t id = new_cart(wh);
+  add_to_cart(wh, "Shoe", 2, id);
+  destroy_warehouse(wh);
+}
+
+/* ---------- add / lookup ---------- */
+
+/* A new merch can be found and keeps its price and description. */
+void test_add_item(void)
+{
+  warehouse_t *wh = create_warehouse();
+  CU_ASSERT_TRUE(add_item(wh, "Shoe", "Red shoe", 100));
+  CU_ASSERT_TRUE(lookup_merch(wh, "Shoe"));
+  CU_ASSERT_EQUAL(get_price(wh, "Shoe"), 100);
+  CU_ASSERT_STRING_EQUAL(get_desc(wh, "Shoe"), "Red shoe");
+  CU_ASSERT_FALSE(lookup_merch(wh, "Hat"));
+  destroy_warehouse(wh);
+}
+
+/* Spec 2.1.1: adding a merch whose name already exists fails, and the
+   original merch is left untouched. */
+void test_add_duplicate(void)
+{
+  warehouse_t *wh = create_warehouse();
+  CU_ASSERT_TRUE(add_item(wh, "Shoe", "Red shoe", 100));
+  CU_ASSERT_FALSE(add_item(wh, "Shoe", "Other shoe", 999));
+  CU_ASSERT_EQUAL(get_price(wh, "Shoe"), 100);
+  CU_ASSERT_STRING_EQUAL(get_desc(wh, "Shoe"), "Red shoe");
+  destroy_warehouse(wh);
+}
+
+/* Spec 2.1.1: a newly added merch is not in stock. */
+void test_new_item_not_in_stock(void)
+{
+  warehouse_t *wh = create_warehouse();
+  add_item(wh, "Shoe", "Red shoe", 100);
+  CU_ASSERT_TRUE(stock_is(wh, "Shoe", 0));
+  destroy_warehouse(wh);
+}
+
+/* ---------- remove merch ---------- */
+
+/* Removing works once; removing again or removing something that never
+   existed fails. Other merch is not affected. */
+void test_remove_item(void)
+{
+  warehouse_t *wh = create_warehouse();
+  add_item(wh, "Shoe", "Red shoe", 100);
+  add_item(wh, "Hat", "Blue hat", 50);
+
+  CU_ASSERT_FALSE(remove_item(wh, "Sock"));
+  CU_ASSERT_TRUE(remove_item(wh, "Shoe"));
+  CU_ASSERT_FALSE(lookup_merch(wh, "Shoe"));
+  CU_ASSERT_FALSE(remove_item(wh, "Shoe"));
+  CU_ASSERT_TRUE(lookup_merch(wh, "Hat"));
+  destroy_warehouse(wh);
+}
+
+/* Spec 2.1.3: removing a merch also removes all its stock. Its shelves must
+   become free so another merch can use them. Catches double frees of the
+   shelves (run with valgrind). */
+void test_remove_item_with_stock(void)
+{
+  warehouse_t *wh = create_warehouse();
+  add_item(wh, "Shoe", "Red shoe", 100);
+  add_item(wh, "Hat", "Blue hat", 50);
+  replenish_stock(wh, "Shoe", "A01", 5);
+  replenish_stock(wh, "Shoe", "B02", 3);
+
+  CU_ASSERT_FALSE(replenish_stock(wh, "Hat", "A01", 1));  /* still Shoe's */
+  CU_ASSERT_TRUE(remove_item(wh, "Shoe"));
+  CU_ASSERT_TRUE(replenish_stock(wh, "Hat", "A01", 1));   /* now free */
+  CU_ASSERT_TRUE(replenish_stock(wh, "Hat", "B02", 1));
+  destroy_warehouse(wh);
+}
+
+/* ---------- edit merch ---------- */
+
+/* Editing only price and description (same name) is allowed. */
+void test_edit_same_name(void)
+{
+  warehouse_t *wh = create_warehouse();
+  add_item(wh, "Shoe", "Red shoe", 100);
+  CU_ASSERT_TRUE(edit_merch(wh, "Shoe", "Shoe", "Green shoe", 120));
+  CU_ASSERT_EQUAL(get_price(wh, "Shoe"), 120);
+  CU_ASSERT_STRING_EQUAL(get_desc(wh, "Shoe"), "Green shoe");
+  destroy_warehouse(wh);
+}
+
+/* Renaming: the old name disappears, the new one exists, and the merch's
+   shelves follow the new name (spec 2.1.4: stock is not affected). */
+void test_edit_rename(void)
+{
+  warehouse_t *wh = create_warehouse();
+  add_item(wh, "Shoe", "Red shoe", 100);
+  add_item(wh, "Hat", "Blue hat", 50);
+  replenish_stock(wh, "Shoe", "A01", 5);
+
+  CU_ASSERT_TRUE(edit_merch(wh, "Shoe", "Boot", "Black boot", 200));
+  CU_ASSERT_FALSE(lookup_merch(wh, "Shoe"));
+  CU_ASSERT_TRUE(lookup_merch(wh, "Boot"));
+  CU_ASSERT_EQUAL(get_price(wh, "Boot"), 200);
+
+  CU_ASSERT_TRUE(stock_is(wh, "Boot", 5));                /* stock kept */
+  CU_ASSERT_TRUE(replenish_stock(wh, "Boot", "A01", 1));  /* shelf follows */
+  CU_ASSERT_FALSE(replenish_stock(wh, "Hat", "A01", 1));  /* still taken */
+  destroy_warehouse(wh);
+}
+
+/* Spec 2.1.4: renaming to the name of another existing merch fails and
+   changes nothing. */
+void test_edit_to_existing_name(void)
+{
+  warehouse_t *wh = create_warehouse();
+  add_item(wh, "Shoe", "Red shoe", 100);
+  add_item(wh, "Hat", "Blue hat", 50);
+
+  CU_ASSERT_FALSE(edit_merch(wh, "Shoe", "Hat", "x", 1));
+  CU_ASSERT_EQUAL(get_price(wh, "Shoe"), 100);
+  CU_ASSERT_EQUAL(get_price(wh, "Hat"), 50);
+  CU_ASSERT_STRING_EQUAL(get_desc(wh, "Hat"), "Blue hat");
+  destroy_warehouse(wh);
+}
+
+/* Editing a merch that does not exist fails. */
+void test_edit_nonexisting(void)
+{
+  warehouse_t *wh = create_warehouse();
+  CU_ASSERT_FALSE(edit_merch(wh, "Sock", "Sock2", "x", 1));
+  destroy_warehouse(wh);
+}
+
+/* ---------- replenish ---------- */
+
+/* Invalid replenishes: unknown merch, and amounts below 1 (spec 2.1.6:
+   "increases the stock by at least one"). */
+void test_replenish_invalid(void)
+{
+  warehouse_t *wh = create_warehouse();
+  add_item(wh, "Shoe", "Red shoe", 100);
+
+  CU_ASSERT_FALSE(replenish_stock(wh, "Sock", "A01", 5));
+  CU_ASSERT_FALSE(replenish_stock(wh, "Shoe", "A01", 0));
+  CU_ASSERT_FALSE(replenish_stock(wh, "Shoe", "A01", -3));
+  CU_ASSERT_TRUE(stock_is(wh, "Shoe", 0));
+  destroy_warehouse(wh);
+}
+
+/* Replenishing the same shelf twice adds to it; a second shelf adds to the
+   total. Total stock = sum over all shelves. */
+void test_replenish_adds_up(void)
+{
+  warehouse_t *wh = create_warehouse();
+  add_item(wh, "Shoe", "Red shoe", 100);
+
+  CU_ASSERT_TRUE(replenish_stock(wh, "Shoe", "A01", 3));
+  CU_ASSERT_TRUE(replenish_stock(wh, "Shoe", "A01", 2));
+  CU_ASSERT_TRUE(stock_is(wh, "Shoe", 5));
+
+  CU_ASSERT_TRUE(replenish_stock(wh, "Shoe", "B02", 4));
+  CU_ASSERT_TRUE(stock_is(wh, "Shoe", 9));
+  destroy_warehouse(wh);
+}
+
+/* Spec: a storage location holds only one kind of merch. */
+void test_replenish_shelf_taken(void)
+{
+  warehouse_t *wh = create_warehouse();
+  add_item(wh, "Shoe", "Red shoe", 100);
+  add_item(wh, "Hat", "Blue hat", 50);
+  replenish_stock(wh, "Shoe", "A01", 5);
+
+  CU_ASSERT_FALSE(replenish_stock(wh, "Hat", "A01", 1));
+  CU_ASSERT_TRUE(stock_is(wh, "Shoe", 5));   /* Shoe unchanged */
+  CU_ASSERT_TRUE(stock_is(wh, "Hat", 0));
+  destroy_warehouse(wh);
+}
+
+/* ---------- carts ---------- */
+
+/* Spec 2.1.7: cart ids are 1, 2, 3, ... and are never reused, even after a
+   cart has been removed. */
+void test_cart_ids(void)
+{
+  warehouse_t *wh = create_warehouse();
+  CU_ASSERT_EQUAL(new_cart(wh), 1);
+  CU_ASSERT_EQUAL(new_cart(wh), 2);
+  CU_ASSERT_EQUAL(new_cart(wh), 3);
+  CU_ASSERT_TRUE(remove_cart(wh, 2));
+  CU_ASSERT_EQUAL(new_cart(wh), 4);
+  destroy_warehouse(wh);
+}
+
+/* Removing a cart works once; non-existing ids fail. */
+void test_remove_cart(void)
+{
+  warehouse_t *wh = create_warehouse();
+  size_t id = new_cart(wh);
+  CU_ASSERT_FALSE(remove_cart(wh, id + 1));
+  CU_ASSERT_TRUE(remove_cart(wh, id));
+  CU_ASSERT_FALSE(remove_cart(wh, id));
+  destroy_warehouse(wh);
+}
+
+/* Removing a cart releases its reservation, so another cart can take the
+   same stock. */
+void test_remove_cart_releases_items(void)
+{
+  warehouse_t *wh = create_warehouse();
+  add_item(wh, "Shoe", "Red shoe", 100);
+  replenish_stock(wh, "Shoe", "A01", 5);
+  size_t c1 = new_cart(wh);
+  size_t c2 = new_cart(wh);
+
+  CU_ASSERT_TRUE(add_to_cart(wh, "Shoe", 5, c1));
+  CU_ASSERT_FALSE(add_to_cart(wh, "Shoe", 1, c2));
+  CU_ASSERT_TRUE(remove_cart(wh, c1));
+  CU_ASSERT_TRUE(add_to_cart(wh, "Shoe", 5, c2));
+  destroy_warehouse(wh);
+}
+
+/* ---------- add to cart ---------- */
+
+/* Invalid adds: unknown merch, unknown cart, quantity < 1, more than stock. */
+void test_add_to_cart_invalid(void)
+{
+  warehouse_t *wh = create_warehouse();
+  add_item(wh, "Shoe", "Red shoe", 100);
+  replenish_stock(wh, "Shoe", "A01", 5);
+  size_t id = new_cart(wh);
+
+  CU_ASSERT_FALSE(add_to_cart(wh, "Sock", 1, id));
+  CU_ASSERT_FALSE(add_to_cart(wh, "Shoe", 1, id + 1));
+  CU_ASSERT_FALSE(add_to_cart(wh, "Shoe", 0, id));
+  CU_ASSERT_FALSE(add_to_cart(wh, "Shoe", -1, id));
+  CU_ASSERT_FALSE(add_to_cart(wh, "Shoe", 6, id));
+  CU_ASSERT_TRUE(add_to_cart(wh, "Shoe", 5, id));
+  destroy_warehouse(wh);
+}
+
+/* Merch without stock cannot be added at all. */
+void test_add_to_cart_no_stock(void)
+{
+  warehouse_t *wh = create_warehouse();
+  add_item(wh, "Shoe", "Red shoe", 100);
+  size_t id = new_cart(wh);
+  CU_ASSERT_FALSE(add_to_cart(wh, "Shoe", 1, id));
+  destroy_warehouse(wh);
+}
+
+/* Spec 2.1.9: the total over ALL carts may never exceed the stock, so that
+   every cart can be checked out. A failed add must not change the cart. */
+void test_add_to_cart_all_carts(void)
+{
+  warehouse_t *wh = create_warehouse();
+  add_item(wh, "Shoe", "Red shoe", 100);
+  replenish_stock(wh, "Shoe", "A01", 5);
+  size_t c1 = new_cart(wh);
+  size_t c2 = new_cart(wh);
+
+  CU_ASSERT_TRUE(add_to_cart(wh, "Shoe", 3, c1));
+  CU_ASSERT_FALSE(add_to_cart(wh, "Shoe", 3, c2));   /* 3 + 3 > 5 */
+  CU_ASSERT_TRUE(add_to_cart(wh, "Shoe", 2, c2));    /* 3 + 2 = 5 */
+  CU_ASSERT_FALSE(add_to_cart(wh, "Shoe", 1, c1));   /* nothing left */
+  CU_ASSERT_EQUAL(calculate_cost(wh, c1), 300);      /* c1 still has 3 */
+  CU_ASSERT_EQUAL(calculate_cost(wh, c2), 200);
+  destroy_warehouse(wh);
+}
+
+/* Adding the same merch twice to one cart adds up the quantities. */
+void test_add_to_cart_accumulates(void)
+{
+  warehouse_t *wh = create_warehouse();
+  add_item(wh, "Shoe", "Red shoe", 100);
+  replenish_stock(wh, "Shoe", "A01", 5);
+  size_t id = new_cart(wh);
+
+  CU_ASSERT_TRUE(add_to_cart(wh, "Shoe", 2, id));
+  CU_ASSERT_TRUE(add_to_cart(wh, "Shoe", 3, id));
+  CU_ASSERT_EQUAL(calculate_cost(wh, id), 500);
+  destroy_warehouse(wh);
+}
+
+/* ---------- calculate cost ---------- */
+
+/* The example from spec 2.1.11: 2 x 50 + 8 x 3 = 124. An empty cart costs
+   0, and a cart that does not exist gives -1. */
+void test_calculate_cost(void)
+{
+  warehouse_t *wh = create_warehouse();
+  add_item(wh, "M1", "first", 50);
+  add_item(wh, "M2", "second", 3);
+  replenish_stock(wh, "M1", "A01", 10);
+  replenish_stock(wh, "M2", "B02", 10);
+  size_t id = new_cart(wh);
+  size_t empty = new_cart(wh);
+
+  add_to_cart(wh, "M1", 2, id);
+  add_to_cart(wh, "M2", 8, id);
+  CU_ASSERT_EQUAL(calculate_cost(wh, id), 124);
+  CU_ASSERT_EQUAL(calculate_cost(wh, empty), 0);
+  CU_ASSERT_EQUAL(calculate_cost(wh, 999), -1);
+  destroy_warehouse(wh);
+}
+
+/* ---------- remove from cart ---------- */
+
+/* Removing part, then the rest, then one too many. Removing 0 is allowed
+   (spec 2.1.10: "zero or more"). */
+void test_remove_from_cart(void)
+{
+  warehouse_t *wh = create_warehouse();
+  add_item(wh, "Shoe", "Red shoe", 100);
+  replenish_stock(wh, "Shoe", "A01", 5);
+  size_t id = new_cart(wh);
+  add_to_cart(wh, "Shoe", 5, id);
+
+  CU_ASSERT_TRUE(remove_from_cart(wh, id, "Shoe", 0));
+  CU_ASSERT_EQUAL(calculate_cost(wh, id), 500);
+  CU_ASSERT_TRUE(remove_from_cart(wh, id, "Shoe", 2));
+  CU_ASSERT_EQUAL(calculate_cost(wh, id), 300);
+  CU_ASSERT_TRUE(remove_from_cart(wh, id, "Shoe", 3));
+  CU_ASSERT_EQUAL(calculate_cost(wh, id), 0);
+  CU_ASSERT_FALSE(remove_from_cart(wh, id, "Shoe", 1));
+  destroy_warehouse(wh);
+}
+
+/* Invalid removes: too many, unknown cart, merch not in the cart, and a
+   negative amount (which would otherwise ADD items). */
+void test_remove_from_cart_invalid(void)
+{
+  warehouse_t *wh = create_warehouse();
+  add_item(wh, "Shoe", "Red shoe", 100);
+  add_item(wh, "Hat", "Blue hat", 50);
+  replenish_stock(wh, "Shoe", "A01", 5);
+  size_t id = new_cart(wh);
+  add_to_cart(wh, "Shoe", 2, id);
+
+  CU_ASSERT_FALSE(remove_from_cart(wh, id, "Shoe", 3));
+  CU_ASSERT_FALSE(remove_from_cart(wh, id + 1, "Shoe", 1));
+  CU_ASSERT_FALSE(remove_from_cart(wh, id, "Hat", 1));
+  CU_ASSERT_FALSE(remove_from_cart(wh, id, "Shoe", -1));
+  CU_ASSERT_EQUAL(calculate_cost(wh, id), 200);   /* nothing changed */
+  destroy_warehouse(wh);
+}
+
+/* Items removed from a cart become available to other carts again. */
+void test_remove_from_cart_releases(void)
+{
+  warehouse_t *wh = create_warehouse();
+  add_item(wh, "Shoe", "Red shoe", 100);
+  replenish_stock(wh, "Shoe", "A01", 5);
+  size_t c1 = new_cart(wh);
+  size_t c2 = new_cart(wh);
+
+  add_to_cart(wh, "Shoe", 5, c1);
+  CU_ASSERT_FALSE(add_to_cart(wh, "Shoe", 2, c2));
+  remove_from_cart(wh, c1, "Shoe", 2);
+  CU_ASSERT_TRUE(add_to_cart(wh, "Shoe", 2, c2));
+  destroy_warehouse(wh);
+}
+
+/* ---------- checkout ---------- */
+
+/* Checkout taking part of one shelf: stock decreases and the cart is gone. */
+void test_checkout_partial_shelf(void)
+{
+  warehouse_t *wh = create_warehouse();
+  add_item(wh, "Shoe", "Red shoe", 100);
+  replenish_stock(wh, "Shoe", "A01", 5);
+  size_t id = new_cart(wh);
+  add_to_cart(wh, "Shoe", 3, id);
+
+  CU_ASSERT_TRUE(checkout(wh, id));
+  CU_ASSERT_TRUE(stock_is(wh, "Shoe", 2));
+  CU_ASSERT_EQUAL(calculate_cost(wh, id), -1);   /* cart removed */
+  CU_ASSERT_FALSE(checkout(wh, id));             /* can't check out twice */
+  destroy_warehouse(wh);
+}
+
+/* Checkout emptying a shelf exactly: the shelf is removed (a location always
+   holds at least one item) and becomes free for other merch. */
+void test_checkout_exact_shelf(void)
+{
+  warehouse_t *wh = create_warehouse();
+  add_item(wh, "Shoe", "Red shoe", 100);
+  add_item(wh, "Hat", "Blue hat", 50);
+  replenish_stock(wh, "Shoe", "A01", 5);
+  size_t id = new_cart(wh);
+  add_to_cart(wh, "Shoe", 5, id);
+
+  CU_ASSERT_TRUE(checkout(wh, id));
+  CU_ASSERT_TRUE(stock_is(wh, "Shoe", 0));
+  CU_ASSERT_TRUE(replenish_stock(wh, "Hat", "A01", 1));
+  destroy_warehouse(wh);
+}
+
+/* Checkout that needs several shelves: the first shelf is emptied and
+   removed, the second is reduced. */
+void test_checkout_multiple_shelves(void)
+{
+  warehouse_t *wh = create_warehouse();
+  add_item(wh, "Shoe", "Red shoe", 100);
+  add_item(wh, "Hat", "Blue hat", 50);
+  replenish_stock(wh, "Shoe", "A01", 2);
+  replenish_stock(wh, "Shoe", "B02", 3);
+  size_t id = new_cart(wh);
+  add_to_cart(wh, "Shoe", 4, id);
+
+  CU_ASSERT_TRUE(checkout(wh, id));
+  CU_ASSERT_TRUE(stock_is(wh, "Shoe", 1));
+  CU_ASSERT_TRUE(replenish_stock(wh, "Hat", "A01", 1));   /* A01 freed */
+  CU_ASSERT_FALSE(replenish_stock(wh, "Hat", "B02", 1));  /* B02 kept */
+  destroy_warehouse(wh);
+}
+
+/* Checkout of a cart with several kinds of merch, and checkout of an
+   empty cart. */
+void test_checkout_several_merch(void)
+{
+  warehouse_t *wh = create_warehouse();
+  add_item(wh, "Shoe", "Red shoe", 100);
+  add_item(wh, "Hat", "Blue hat", 50);
+  replenish_stock(wh, "Shoe", "A01", 5);
+  replenish_stock(wh, "Hat", "B02", 5);
+  size_t id = new_cart(wh);
+  size_t empty = new_cart(wh);
+  add_to_cart(wh, "Shoe", 1, id);
+  add_to_cart(wh, "Hat", 4, id);
+
+  CU_ASSERT_TRUE(checkout(wh, id));
+  CU_ASSERT_TRUE(stock_is(wh, "Shoe", 4));
+  CU_ASSERT_TRUE(stock_is(wh, "Hat", 1));
+  CU_ASSERT_TRUE(checkout(wh, empty));
+  destroy_warehouse(wh);
+}
+
+/* Checkout of a cart that does not exist fails. */
+void test_checkout_nonexisting(void)
+{
+  warehouse_t *wh = create_warehouse();
+  CU_ASSERT_FALSE(checkout(wh, 1));
+  destroy_warehouse(wh);
+}
+
+/* ---------- consistency between merch and carts ---------- */
+
+/* Removing a merch that is in a cart must not leave the cart pointing at it.
+   (Your chosen rule: the merch is removed from all carts.) */
+void test_remove_merch_in_cart(void)
+{
+  warehouse_t *wh = create_warehouse();
+  add_item(wh, "Shoe", "Red shoe", 100);
+  replenish_stock(wh, "Shoe", "A01", 5);
+  size_t id = new_cart(wh);
+  add_to_cart(wh, "Shoe", 2, id);
+
+  CU_ASSERT_TRUE(remove_item(wh, "Shoe"));
+  CU_ASSERT_EQUAL(calculate_cost(wh, id), 0);
+  destroy_warehouse(wh);
+}
+
+
+
+/* ---------- main ---------- */
+
+int main(void)
+{
   if (CU_initialize_registry() != CUE_SUCCESS)
     return CU_get_error();
 
-  // We then create an empty test suite and specify the name and
-  // the init and cleanup functions
-  CU_pSuite my_test_suite = CU_add_suite("My awesome test suite", init_suite, clean_suite);
-  if (my_test_suite == NULL)
-  {
-    // If the test suite could not be added, tear down CUnit and exit
-    CU_cleanup_registry();
-    return CU_get_error();
-  }
+  CU_pSuite suite = CU_add_suite("Warehouse business logic", init_suite, clean_suite);
+  if (suite == NULL)
+    {
+      CU_cleanup_registry();
+      return CU_get_error();
+    }
 
-  // This is where we add the test functions to our test suite.
-  // For each call to CU_add_test we specify the test suite, the
-  // name or description of the test, and the function that runs
-  // the test in question. If you want to add another test, just
-  // copy a line below and change the information
   if (
-      (CU_add_test(my_test_suite, "A simple create and check value", test_correct_shelf) == NULL) ||
-      (CU_add_test(my_test_suite, "test_add", test_add) == NULL) ||
-      (CU_add_test(my_test_suite, "test_remove", test_remove) == NULL) ||
-      (CU_add_test(my_test_suite, "test_edit", test_edit) == NULL) ||
-      (CU_add_test(my_test_suite, "test_replenish", test_replenish) == NULL) ||
-      (CU_add_test(my_test_suite, "create_and_destroy_cart", create_and_destroy_cart) == NULL) ||
-      (CU_add_test(my_test_suite, "test_add_to_cart", test_add_to_cart) == NULL) ||
-      0)
-  {
-    // If adding any of the tests fails, we tear down CUnit and exit
-    CU_cleanup_registry();
-    return CU_get_error();
-  }
+    (CU_add_test(suite, "create and destroy", test_create_destroy) == NULL) ||
+    (CU_add_test(suite, "destroy full warehouse", test_destroy_full_warehouse) == NULL) ||
+    (CU_add_test(suite, "add item", test_add_item) == NULL) ||
+    (CU_add_test(suite, "add duplicate", test_add_duplicate) == NULL) ||
+    (CU_add_test(suite, "new item not in stock", test_new_item_not_in_stock) == NULL) ||
+    (CU_add_test(suite, "remove item", test_remove_item) == NULL) ||
+    (CU_add_test(suite, "remove item with stock", test_remove_item_with_stock) == NULL) ||
+    (CU_add_test(suite, "edit same name", test_edit_same_name) == NULL) ||
+    (CU_add_test(suite, "edit rename", test_edit_rename) == NULL) ||
+    (CU_add_test(suite, "edit to existing name", test_edit_to_existing_name) == NULL) ||
+    (CU_add_test(suite, "edit nonexisting", test_edit_nonexisting) == NULL) ||
+    (CU_add_test(suite, "replenish invalid", test_replenish_invalid) == NULL) ||
+    (CU_add_test(suite, "replenish adds up", test_replenish_adds_up) == NULL) ||
+    (CU_add_test(suite, "replenish shelf taken", test_replenish_shelf_taken) == NULL) ||
+    (CU_add_test(suite, "cart ids", test_cart_ids) == NULL) ||
+    (CU_add_test(suite, "remove cart", test_remove_cart) == NULL) ||
+    (CU_add_test(suite, "remove cart releases items", test_remove_cart_releases_items) == NULL) ||
+    (CU_add_test(suite, "add to cart invalid", test_add_to_cart_invalid) == NULL) ||
+    (CU_add_test(suite, "add to cart no stock", test_add_to_cart_no_stock) == NULL) ||
+    (CU_add_test(suite, "add to cart all carts", test_add_to_cart_all_carts) == NULL) ||
+    (CU_add_test(suite, "add to cart accumulates", test_add_to_cart_accumulates) == NULL) ||
+    (CU_add_test(suite, "calculate cost", test_calculate_cost) == NULL) ||
+    (CU_add_test(suite, "remove from cart", test_remove_from_cart) == NULL) ||
+    (CU_add_test(suite, "remove from cart invalid", test_remove_from_cart_invalid) == NULL) ||
+    (CU_add_test(suite, "remove from cart releases", test_remove_from_cart_releases) == NULL) ||
+    (CU_add_test(suite, "checkout partial shelf", test_checkout_partial_shelf) == NULL) ||
+    (CU_add_test(suite, "checkout exact shelf", test_checkout_exact_shelf) == NULL) ||
+    (CU_add_test(suite, "checkout multiple shelves", test_checkout_multiple_shelves) == NULL) ||
+    (CU_add_test(suite, "checkout several merch", test_checkout_several_merch) == NULL) ||
+    (CU_add_test(suite, "checkout nonexisting", test_checkout_nonexisting) == NULL) ||
+    (CU_add_test(suite, "remove merch in cart", test_remove_merch_in_cart) == NULL) 
+  )
+    {
+      CU_cleanup_registry();
+      return CU_get_error();
+    }
 
-  // Set the running mode. Use CU_BRM_VERBOSE for maximum output.
-  // Use CU_BRM_NORMAL to only print errors and a summary
   CU_basic_set_mode(CU_BRM_VERBOSE);
-
-  // This is where the tests are actually run!
   CU_basic_run_tests();
-
-  // Tear down CUnit before exiting
   CU_cleanup_registry();
   return CU_get_error();
 }

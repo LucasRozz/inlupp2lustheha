@@ -65,11 +65,8 @@ int get_price(warehouse_t *wh, char *merch);
 */
 char *get_desc(warehouse_t *wh, char *merch);
 
-/**
-* @brief Lists the merchandise stored in the warehouse.
-* @param wh The warehouse.
-*/
-void list_items(warehouse_t *wh);
+char **get_merch_names(warehouse_t *wh, size_t *count);
+
 
 /**
 * @brief Removes merchandise and its associated storage locations.

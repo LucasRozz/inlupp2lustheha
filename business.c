@@ -169,55 +169,29 @@ bool add_item(warehouse_t *wh, char *name, char *desc, int price) {;
     }
 }
 
-//UI
 bool lookup_merch(warehouse_t *wh, char *merch){
     elem_t ignore;
     return ioopm_hash_table_lookup(wh->ht_merch, string_elem(merch), &ignore);
 }
 
-int get_price(warehouse_t *wh, char *merch){
-    elem_t result;
-    ioopm_hash_table_lookup(wh->ht_merch, string_elem(merch), &result);
-    merch_t *found_merch = result.p;
-    return found_merch->price;
-}
 
-char *get_desc(warehouse_t *wh, char *merch){
-    elem_t result;
-    ioopm_hash_table_lookup(wh->ht_merch, string_elem(merch), &result);
-    merch_t *found_merch = result.p;
-    return found_merch->desc;
-}
-
-
-
-//UI
-void list_items(warehouse_t *wh) {
+char **get_merch_names(warehouse_t *wh, size_t *count){
+    *count = ioopm_hash_table_size(wh->ht_merch);
+    char **names = calloc(*count, sizeof(char *));
 
     ioopm_hash_table_iterator_t *iter = ioopm_hash_table_iterator_create(wh->ht_merch);
-    bool stop = false;
-    
-    do
-    {
-    for (int i = 1; i <= 20; i++) {
-        if (ioopm_hash_table_iterator_at_end(iter)) {
-            printf("Last item reached\n");
-            ioopm_hash_table_iterator_destroy(iter);
-            return;
-        }
-        else {
-        printf("%d. %s\n", i, ioopm_hash_table_iterator_current_key(iter).s);
+    size_t counter = 0;
+    while(!ioopm_hash_table_iterator_at_end(iter)){
+        names[counter] = ioopm_hash_table_iterator_current_key(iter).s;
+        counter ++;
         ioopm_hash_table_iterator_advance(iter);
-        }
     }
-    char *input = ask_question_string("Type N or n to return to main menu, otherwise enter");
-    stop = (input[0] == 'N' || input[0] == 'n');
-    free(input);
-    
-    } while (!stop);
     ioopm_hash_table_iterator_destroy(iter);
-    return;
+    return names;
 }
+
+//UI
+
 
 
 bool remove_item(warehouse_t *wh, char *remove) {
@@ -236,15 +210,16 @@ bool remove_item(warehouse_t *wh, char *remove) {
         ioopm_hash_table_remove(wh->ht_merch, string_elem(remove), &result);
         free_merch(merch);
 
-        ioopm_hash_table_iterator_t *cart_iter = ioopm_hash_table_iterator_create(wh->ht_cart);
-        while(!ioopm_hash_table_iterator_at_end(cart_iter)){
-            
-            if(strcmp(ioopm_hash_table_iterator_current_key(cart_iter).s, remove) == 0){
-                int current_amount = ioopm_hash_table_iterator_current_value(cart_iter).i;
-                current_amount = 0;
+        ioopm_list_iterator_t *cart_iter = ioopm_list_iterator_create(wh->carts);
+        while(!ioopm_list_iterator_at_end(cart_iter)){
+            cart_t *current_cart = ioopm_list_iterator_current(cart_iter).p;
+            elem_t ignore;
+            if(ioopm_hash_table_lookup(current_cart->items, string_elem(remove), &ignore)){
+                ioopm_hash_table_remove(current_cart->items, string_elem(remove), &ignore);
             }
+            ioopm_list_iterator_advance(cart_iter);
         }
-        
+        ioopm_list_iterator_destroy(cart_iter);
         return true;
     }
     else {
@@ -332,14 +307,19 @@ static ioopm_list_t *sort_list(ioopm_list_t *locations){
 
 void show_stock(warehouse_t *wh, char* merch_name) {
     elem_t result; 
+    size_t counter = 0;
     if (ioopm_hash_table_lookup(wh->ht_merch, string_elem(merch_name), &result)) {
         merch_t *merch = result.p; 
         ioopm_list_t *sorted_list = sort_list(merch->locations);
         ioopm_list_iterator_t *iter = ioopm_list_iterator_create(sorted_list); 
         while (!ioopm_list_iterator_at_end(iter)) {
+            counter ++;
             shelf_t *shelf = ioopm_list_iterator_current(iter).p;
             printf("Location: %s, stock: %d\n", shelf->place, shelf->stock);
             ioopm_list_iterator_advance(iter);
+        }
+        if(counter == 0){
+            printf("No stock\n");
         }
         return;
     }

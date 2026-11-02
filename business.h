@@ -1,30 +1,158 @@
 #pragma once
 #include <stddef.h>
+#include <stdbool.h>
 typedef struct shelf shelf_t;
 typedef struct merch merch_t;
 typedef struct warehouse warehouse_t;
 typedef struct cart cart_t;
 
+/** 
+* @brief Creates empty warehouse.
+* @return A pointer to the newly created warehouse.
+*/
 warehouse_t *create_warehouse();
-void create_cart(warehouse_t *wh);
 
+/**
+* @brief Frees the warehouse and all its associated data.
+* @param wh The warehouse to destroy.
+*/
 void destroy_warehouse(warehouse_t *wh);
 
-void show_stock(warehouse_t *wt, char* merch_name);
-bool add_item(warehouse_t *wh, char *name, char *desc, int price);
-void list_items(warehouse_t *wt);
-bool remove_item(warehouse_t *wt, char *remove);
-bool edit_merch(warehouse_t *wh, char *old_name, char *new_name, char *new_desc, int new_price);
-bool replenish_stock(warehouse_t *wh, char *merch_name, char* storage_id, int stock_increase);
-bool remove_cart(warehouse_t *wh, size_t id);
-bool add_to_cart(warehouse_t *wh, char *key, int quantity, size_t id);
-int calculate_cost(warehouse_t *wh, size_t cart_id);
-bool remove_from_cart(warehouse_t *wh, size_t cart_id, char *merch_name, int amount);
+/**
+* @brief Creates a new shopping cart and assigns it an ID.
+* @param wh The warehouse in which the cart is created.
+*/
+void create_cart(warehouse_t *wh);
+
+/**
+* @brief Retrieves the ID of the most recently created cart.
+* @param wh The warehouse containing the carts.
+* @return The ID of the most recently created cart.
+*/
 size_t get_added_cart_id(warehouse_t *wh);
 
+/**
+* @brief Adds new merchandise to the warehouse.
+* @param wh The warehouse.
+* @param name The name of the merchandise.
+* @param desc A description of the merchandise.
+* @param price The price of the merchandise.
+* @return True if the merchandise was added, false if it already exists.
+*/
+bool add_item(warehouse_t *wh, char *name, char *desc, int price);
+
+/**
+* @brief Checks whether merchandise exists in the warehouse.
+* @param wh The warehouse.
+* @param merch The name of the merchandise.
+* @return True if the merchandise exists, false otherwise.
+*/
+bool lookup_merch(warehouse_t *wh, char *merch);
+
+/**
+* @brief Retrieves the price of a merchandise item.
+* @param wh The warehouse.
+* @param merch The name of the merchandise.
+* @return The price of the merchandise.
+*/
+int get_price(warehouse_t *wh, char *merch);
+
+/**
+* @brief Retrieves the description of a merchandise item.
+* @param wh The warehouse.
+* @param merch The name of the merchandise.
+* @return A pointer to the merchandise description.
+*/
+char *get_desc(warehouse_t *wh, char *merch);
+
+/**
+* @brief Lists the merchandise stored in the warehouse.
+* @param wh The warehouse.
+*/
+void list_items(warehouse_t *wh);
+
+/**
+* @brief Removes merchandise and its associated storage locations.
+* @param wh The warehouse.
+* @param remove The name of the merchandise to remove.
+* @return True if the merchandise was removed, false if it was not found.
+*/
+bool remove_item(warehouse_t *wh, char *remove);
+
+/**
+* @brief Changes the name, description and price of existing merchandise.
+* @param wh The warehouse.
+* @param old_name The current name of the merchandise.
+* @param new_name The new name of the merchandise.
+* @param new_desc The new description.
+* @param new_price The new price.
+* @return True if the merchandise was edited, false otherwise.
+*/
+bool edit_merch(warehouse_t *wh, char *old_name, char *new_name, char *new_desc, int new_price);
+
+/**
+* @brief Displays the stock and storage locations of merchandise.
+* @param wh The warehouse.
+* @param merch_name The name of the merchandise.
+*/
+void show_stock(warehouse_t *wh, char *merch_name);
+
+/**
+* @brief Adds stock to merchandise at a specified storage location.
+* @param wh The warehouse.
+* @param merch_name The name of the merchandise.
+* @param storage_id The storage location identifier.
+* @param stock_increase The amount of stock to add.
+* @return True if the stock was successfully replenished, false otherwise.
+*/
+bool replenish_stock(warehouse_t *wh, char *merch_name, char* storage_id, int stock_increase);
+
+/**
+* @brief Removes a shopping cart from the warehouse.
+* @param wh The warehouse.
+* @param id The ID of the cart to remove.
+* @return True if the cart was removed, false if it was not found.
+*/
+bool remove_cart(warehouse_t *wh, size_t id);
+
+/**
+* @brief Adds merchandise to a shopping cart.
+* @param wh The warehouse.
+* @param key The name of the merchandise to add.
+* @param quantity The quantity to add.
+* @param id The ID of the shopping cart.
+* @return True if the merchandise was added, false otherwise.
+*/
+bool add_to_cart(warehouse_t *wh, char *key, int quantity, size_t id);
+
+/**
+* @brief Calculates the total cost of the merchandise in a cart.
+* @param wh The warehouse.
+* @param cart_id The ID of the shopping cart.
+* @return The total cost, or -1 if the cart does not exist.
+*/
+int calculate_cost(warehouse_t *wh, size_t cart_id);
+
+/**
+* @brief Prints all shopping carts and their contents.
+* @param wh The warehouse.
+*/
 void print_carts(warehouse_t *wh);
 
+/**
+* @brief Removes a specified quantity of merchandise from a shopping cart.
+* @param wh The warehouse.
+* @param cart_id The ID of the shopping cart.
+* @param merch_name The name of the merchandise to remove.
+* @param amount The quantity to remove.
+* @return True if the merchandise was removed, false otherwise.
+*/
+bool remove_from_cart(warehouse_t *wh, size_t cart_id, char *merch_name, int amount);
 
-bool lookup_merch(warehouse_t *wh, char *merch);
-char *get_desc(warehouse_t *wh, char *merch);
-int get_price(warehouse_t *wh, char *merch);
+/**
+* @brief Completes a purchase by deducting stock and removing the cart.
+* @param wh The warehouse.
+* @param cart_id The ID of the shopping cart to check out.
+* @return True if checkout was successful, false if the cart was not found.
+*/
+bool checkout(warehouse_t *wh, size_t cart_id);

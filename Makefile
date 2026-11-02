@@ -21,13 +21,16 @@ ui.o: ui.c ui.h
 tests: business.o utils.o business_test.c $(GENERIC)
 	gcc $(CFLAGS) $^ -o $@ -lcunit
 
+new_tests: business.o utils.o new_tests.c $(GENERIC)
+	gcc $(CFLAGS) $^ -o $@ -lcunit
+	
 memtest: tests
 	valgrind --leak-check=full ./tests
 
 print: $(GENERIC) business.o utils.o ui.o business_print_tests.c
 	gcc $(CFLAGS) $^ -o $@
 
-event_loop: $(GENERIC) business.o utils.o ui.o event_loop.c
+main: $(GENERIC) business.o utils.o ui.o 
 	gcc $(CFLAGS) $^ -o $@
 
 clean:

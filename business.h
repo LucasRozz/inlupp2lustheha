@@ -1,4 +1,9 @@
+/**
+ * @file business.h
+ * @brief Warehouse business logic: merchandise, storage locations and carts. Contains no user interaction
+ */
 #pragma once
+
 #include <stddef.h>
 #include <stdbool.h>
 typedef struct shelf shelf_t;
@@ -10,7 +15,7 @@ typedef struct cart cart_t;
 * @brief Creates empty warehouse.
 * @return A pointer to the newly created warehouse.
 */
-warehouse_t *create_warehouse();
+warehouse_t *create_warehouse(void);
 
 /**
 * @brief Frees the warehouse and all its associated data.
@@ -83,16 +88,24 @@ bool remove_item(warehouse_t *wh, char *remove);
 * @param new_name The new name of the merchandise.
 * @param new_desc The new description.
 * @param new_price The new price.
-* @return True if the merchandise was edited, false otherwise.
+* @return True if the merchandise was succesfully edited, false otherwise.
 */
 bool edit_merch(warehouse_t *wh, char *old_name, char *new_name, char *new_desc, int new_price);
 
 /**
-* @brief Displays the stock and storage locations of merchandise.
-* @param wh The warehouse.
-* @param merch_name The name of the merchandise.
-*/
-void show_stock(warehouse_t *wh, char *merch_name);
+ * @brief Gets the storage locations of a merch, sorted by name.
+ * @param wh The warehouse.
+ * @param merch_name The name of the merchandise.
+ * @param count Set to the number of storage locations.
+ * @return An array of shelves, or NULL if the merch does not exist.
+ */
+shelf_t **get_sorted_shelves(warehouse_t *wh, char *merch_name, size_t *count);
+
+/// @brief The name of a storage location (borrowed, do not free).
+char *shelf_get_place(shelf_t *shelf);
+
+/// @brief The number of items stored on a storage location.
+int shelf_get_stock(shelf_t *shelf);
 
 /**
 * @brief Adds stock to merchandise at a specified storage location.
@@ -129,12 +142,6 @@ bool add_to_cart(warehouse_t *wh, char *key, int quantity, size_t id);
 * @return The total cost, or -1 if the cart does not exist.
 */
 int calculate_cost(warehouse_t *wh, size_t cart_id);
-
-/**
-* @brief Prints all shopping carts and their contents.
-* @param wh The warehouse.
-*/
-void print_carts(warehouse_t *wh);
 
 /**
 * @brief Removes a specified quantity of merchandise from a shopping cart.

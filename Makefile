@@ -1,5 +1,5 @@
 CFLAGS = -g -Wall -Wextra -Wpedantic 
-.PHONY = clean
+.PHONY = clean test
 
 GENERIC = hash_table.o linked_list.o
 
@@ -21,11 +21,13 @@ ui.o: ui.c ui.h
 tests: business.o utils.o business_test.c $(GENERIC)
 	gcc $(CFLAGS) $^ -o $@ -lcunit
 
-new_tests: business.o utils.o new_tests.c $(GENERIC)
-	gcc $(CFLAGS) $^ -o $@ -lcunit
-	
 memtest: tests
 	valgrind --leak-check=full ./tests
+
+coverage: clean
+	$(MAKE) CFLAGS="$(CFLAGS) --coverage" tests
+	./tests
+	gcov -b business.c utils.c
 
 print: $(GENERIC) business.o utils.o ui.o business_print_tests.c
 	gcc $(CFLAGS) $^ -o $@
@@ -34,4 +36,4 @@ main: $(GENERIC) business.o utils.o ui.o
 	gcc $(CFLAGS) $^ -o $@
 
 clean:
-	rm -f *.o tests test a.out event_loop
+	rm -f *.o tests test a.out event_loop main new_tests *.gcda *.gcno *.gcov

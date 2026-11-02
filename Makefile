@@ -29,10 +29,7 @@ coverage: clean
 	./tests
 	gcov -b business.c utils.c
 
-print: $(GENERIC) business.o utils.o ui.o business_print_tests.c
-	gcc $(CFLAGS) $^ -o $@
-
-main: $(GENERIC) business.o utils.o ui.o 
+main: $(GENERIC) business.o utils.o ui.o main.c
 	gcc $(CFLAGS) $^ -o $@
 
 clean:

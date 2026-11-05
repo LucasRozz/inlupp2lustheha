@@ -7,9 +7,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 typedef struct shelf shelf_t;
-typedef struct merch merch_t;
 typedef struct warehouse warehouse_t;
-typedef struct cart cart_t;
 
 /** 
 * @brief Creates empty warehouse.

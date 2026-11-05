@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
-#include <assert.h>
 
 #include "generic_data/common.h"
 #include "generic_data/hash_table.h"
@@ -11,7 +10,7 @@
 #include "generic_data/linked_list.h"
 #include "generic_data/list_iterator.h"
 #include "business.h"
-#include "utils.h"
+
 
 struct shelf
 {
@@ -26,12 +25,14 @@ struct merch
     int price;
     ioopm_list_t *locations;
 };
+typedef struct merch merch_t;
+
 struct cart
 {
     size_t id;
     ioopm_hash_table_t *items;
 };
-// A cart is a merch-> quantity hash table. In the linked list, each element is a cart which has its id and then the cart.
+typedef struct cart cart_t;
 
 struct warehouse
 {

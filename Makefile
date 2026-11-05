@@ -1,5 +1,5 @@
 CFLAGS = -g -Wall -Wextra -Wpedantic 
-.PHONY = clean test
+.PHONY = clean tests
 
 GENERIC = hash_table.o linked_list.o
 
@@ -20,6 +20,7 @@ ui.o: ui.c ui.h
 
 tests: business.o utils.o business_test.c $(GENERIC)
 	gcc $(CFLAGS) $^ -o $@ -lcunit
+	./tests
 
 memtest: tests
 	valgrind --leak-check=full ./tests

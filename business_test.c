@@ -15,6 +15,8 @@
  *
  * Run under valgrind as well: several tests (remove, edit, checkout) mainly
  * exist to catch double frees, use after free and leaks.
+ * 
+ * Most tests in this files is from ai.
  */
 
 int init_suite(void)  { return 0; }
@@ -70,9 +72,7 @@ void test_destroy_full_warehouse(void)
   destroy_warehouse(wh);
 }
 
-/* ---------- add / lookup ---------- */
 
-/* A new merch can be found and keeps its price and description. */
 void test_add_item(void)
 {
   warehouse_t *wh = create_warehouse();
@@ -84,8 +84,6 @@ void test_add_item(void)
   destroy_warehouse(wh);
 }
 
-/* Spec 2.1.1: adding a merch whose name already exists fails, and the
-   original merch is left untouched. */
 void test_add_duplicate(void)
 {
   warehouse_t *wh = create_warehouse();
@@ -96,7 +94,6 @@ void test_add_duplicate(void)
   destroy_warehouse(wh);
 }
 
-/* Spec 2.1.1: a newly added merch is not in stock. */
 void test_new_item_not_in_stock(void)
 {
   warehouse_t *wh = create_warehouse();
@@ -105,10 +102,6 @@ void test_new_item_not_in_stock(void)
   destroy_warehouse(wh);
 }
 
-/* ---------- remove merch ---------- */
-
-/* Removing works once; removing again or removing something that never
-   existed fails. Other merch is not affected. */
 void test_remove_item(void)
 {
   warehouse_t *wh = create_warehouse();
@@ -123,9 +116,6 @@ void test_remove_item(void)
   destroy_warehouse(wh);
 }
 
-/* Spec 2.1.3: removing a merch also removes all its stock. Its shelves must
-   become free so another merch can use them. Catches double frees of the
-   shelves (run with valgrind). */
 void test_remove_item_with_stock(void)
 {
   warehouse_t *wh = create_warehouse();
@@ -134,16 +124,14 @@ void test_remove_item_with_stock(void)
   replenish_stock(wh, "Shoe", "A01", 5);
   replenish_stock(wh, "Shoe", "B02", 3);
 
-  CU_ASSERT_FALSE(replenish_stock(wh, "Hat", "A01", 1));  /* still Shoe's */
+  CU_ASSERT_FALSE(replenish_stock(wh, "Hat", "A01", 1)); 
   CU_ASSERT_TRUE(remove_item(wh, "Shoe"));
-  CU_ASSERT_TRUE(replenish_stock(wh, "Hat", "A01", 1));   /* now free */
+  CU_ASSERT_TRUE(replenish_stock(wh, "Hat", "A01", 1));   
   CU_ASSERT_TRUE(replenish_stock(wh, "Hat", "B02", 1));
   destroy_warehouse(wh);
 }
 
-/* ---------- edit merch ---------- */
 
-/* Editing only price and description (same name) is allowed. */
 void test_edit_same_name(void)
 {
   warehouse_t *wh = create_warehouse();
@@ -154,8 +142,7 @@ void test_edit_same_name(void)
   destroy_warehouse(wh);
 }
 
-/* Renaming: the old name disappears, the new one exists, and the merch's
-   shelves follow the new name (spec 2.1.4: stock is not affected). */
+
 void test_edit_rename(void)
 {
   warehouse_t *wh = create_warehouse();

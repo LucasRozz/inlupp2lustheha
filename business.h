@@ -36,7 +36,7 @@ size_t get_added_cart_id(warehouse_t *wh);
 
 /**
 * @brief Adds new merchandise to the warehouse.
-* @param wh The warehouse.
+* @param wh The warehouse where we want to add a new item.
 * @param name The name of the merchandise.
 * @param desc A description of the merchandise.
 * @param price The price of the merchandise.
@@ -46,7 +46,7 @@ bool add_item(warehouse_t *wh, char *name, char *desc, int price);
 
 /**
 * @brief Checks whether merchandise exists in the warehouse.
-* @param wh The warehouse.
+* @param wh The warehouse where we want to look for the merch.
 * @param merch The name of the merchandise.
 * @return True if the merchandise exists, false otherwise.
 */
@@ -54,7 +54,7 @@ bool lookup_merch(warehouse_t *wh, char *merch);
 
 /**
 * @brief Retrieves the price of a merchandise item.
-* @param wh The warehouse.
+* @param wh The warehouse containging the merch we are looking for.
 * @param merch The name of the merchandise.
 * @return The price of the merchandise.
 */
@@ -68,6 +68,13 @@ int get_price(warehouse_t *wh, char *merch);
 */
 char *get_desc(warehouse_t *wh, char *merch);
 
+
+/**
+ * @brief Returns a double pointer to all merch in the warehouse
+ * @param wh the warehouse to get all merch from.
+ * @param count a pointer to a size_t which will be changed to the amount of merches
+ * @return A double-pointer to the names of all merches, a side effect is that count gets changed to the amount of merch
+ */
 char **get_merch_names(warehouse_t *wh, size_t *count);
 
 

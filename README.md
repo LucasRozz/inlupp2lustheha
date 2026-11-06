@@ -60,8 +60,8 @@ You will get the result :
  
  ```
 File 'business.c'
-Lines executed:81.23% of 357
-Branches executed:76.27% of 118
+Lines executed:85.10% of 349
+Branches executed:86.79% of 106
 ```
 
 ## Program structure and modularization

@@ -259,7 +259,6 @@ bool remove_item(warehouse_t *wh, char *remove)
     // 3. varan ur ht_merch
     ioopm_hash_table_remove(wh->ht_merch, string_elem(merch->name), &result);
 
-    // 4. frigör sist
     free_merch(merch);
     return true;
 }
@@ -293,16 +292,27 @@ bool edit_merch(warehouse_t *wh, char *old_name, char *new_name, char *new_desc,
             merch->price = new_price;
             change_location_name(wh, merch);
             ioopm_hash_table_insert(wh->ht_merch, string_elem(merch->name), ptr_elem(merch));
-            free(previous_name);
-            free(previous_desc);
-            return true;
+
+            ioopm_list_iterator_t *cart_iter = ioopm_list_iterator_create(wh->carts);
+            while (!ioopm_list_iterator_at_end(cart_iter))
+            {
+            cart_t *current = ioopm_list_iterator_current(cart_iter).p;
+            elem_t found;
+            if(ioopm_hash_table_lookup(current->items, string_elem(previous_name), &found)){
+                size_t amount = found.i;
+                ioopm_hash_table_remove(current->items, string_elem(previous_name), &ignore);
+                ioopm_hash_table_insert(current->items, string_elem(merch->name), int_elem(amount));
+            }
+            ioopm_list_iterator_advance(cart_iter);
         }
-        else
-        {
-            return false;
-        }
+        ioopm_list_iterator_destroy(cart_iter);
+        free(previous_name);
+        free(previous_desc);
+        return true;
     }
     return false;
+}
+return false;
 }
 
 static ioopm_list_t *sort_list(ioopm_list_t *locations)
@@ -532,7 +542,6 @@ bool add_to_cart(warehouse_t *wh, char *key, int quantity, size_t id)
         if (ioopm_hash_table_lookup(items_in_cart, string_elem(key), &amount_of_item))
         {
             amount_of_item.i += quantity;
-            // Här bör vi kanske lägga till någon slags reserverad mängd så vi kan hålla koll
             ioopm_hash_table_insert(items_in_cart, string_elem(merch_to_add->name), amount_of_item);
             return true;
         }

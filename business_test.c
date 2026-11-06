@@ -514,6 +514,30 @@ void test_remove_merch_in_cart(void)
   destroy_warehouse(wh);
 }
 
+void test_edit_merch_in_cart(void){
+  warehouse_t *wh = create_warehouse();
+  add_item(wh, "Shoe", "Red shoe", 100);
+  add_item(wh, "Crab", "sushi", 50);
+  
+  replenish_stock(wh, "Shoe", "A01", 15);
+  replenish_stock(wh, "Crab", "A02", 10);
+  new_cart(wh); //1
+  new_cart(wh); //2
+  new_cart(wh); //3
+
+  add_to_cart(wh, "Shoe", 3, 1); //300
+  add_to_cart(wh, "Crab", 1, 1); //350
+  add_to_cart(wh, "Shoe", 10, 2); // 1000
+  add_to_cart(wh, "Crab", 2, 3);
+  edit_merch(wh, "Shoe", "BBall", "lebron", 40);
+  CU_ASSERT_EQUAL(calculate_cost(wh, 1), 170);
+  CU_ASSERT_EQUAL(calculate_cost(wh, 2), 400);
+  CU_ASSERT_EQUAL(calculate_cost(wh, 3), 100);
+
+  destroy_warehouse(wh);
+
+
+}
 
 
 /* ---------- main ---------- */
@@ -561,7 +585,9 @@ int main(void)
     (CU_add_test(suite, "checkout multiple shelves", test_checkout_multiple_shelves) == NULL) ||
     (CU_add_test(suite, "checkout several merch", test_checkout_several_merch) == NULL) ||
     (CU_add_test(suite, "checkout nonexisting", test_checkout_nonexisting) == NULL) ||
-    (CU_add_test(suite, "remove merch in cart", test_remove_merch_in_cart) == NULL) 
+    (CU_add_test(suite, "remove merch in cart", test_remove_merch_in_cart) == NULL) ||
+    (CU_add_test(suite, "edit merch in cart", test_edit_merch_in_cart) == NULL) ||
+    0
   )
     {
       CU_cleanup_registry();
